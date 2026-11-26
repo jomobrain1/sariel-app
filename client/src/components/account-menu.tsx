@@ -3,10 +3,12 @@ import { Link, NavLink } from 'react-router'
 import { WorkspaceIdentity } from '../features/tenancy/workspace-switcher'
 import { useAuth } from '../app/auth'
 import { AccountIcon } from './account-icon'
+import { NotificationBell } from '../features/notifications/notification-bell'
 
 export function AccountMenu({ platform = false, onToggle }: { platform?: boolean; onToggle?: () => void }) {
   const { user, logout, logoutStatus } = useAuth()
   const platformAdmin = user?.platformRole === 'superadmin' && !user.tenant
+  const individual = !!user && !user.tenant && !platformAdmin
   const canAdmin = user?.roles?.includes('admin') || !!user?.adminTabs?.length
   const [notice, setNotice] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
@@ -28,6 +30,7 @@ export function AccountMenu({ platform = false, onToggle }: { platform?: boolean
     <div className="starter-account" ref={accountRef} onKeyDown={event => {
       if (event.key === 'Escape' && accountOpen) { event.stopPropagation(); close(); accountToggleRef.current?.focus() }
     }} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setAccountOpen(false) }}>
+      {!platform && individual && <NotificationBell onNavigate={close} />}
       {!platform && <Link className="starter-profile-link" to="/profile" onClick={close}>My profile</Link>}
       <button ref={accountToggleRef} className="starter-account-toggle" type="button" aria-label="Open account menu" aria-expanded={accountOpen} aria-controls={accountId} onClick={() => { setAccountOpen(!accountOpen); onToggle?.() }}>
         <span className="starter-account-avatar">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : user?.name?.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'Me'}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>

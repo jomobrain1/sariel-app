@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
-import { request } from 'node:http';
+import { createServer, request } from 'node:http';
 import mongoose from 'mongoose';
 process.env.AUTH_ACCESS_SECRET=randomUUID();
 process.env.AUTH_REFRESH_SECRET=randomUUID();
@@ -133,6 +133,80 @@ try {
   await call('individual/location',{method:'DELETE',token:alice.token,status:204});
   assert.equal((await call('individual/location',{token:alice.token})).length,0);
   console.log('Phase 4 updates and location checks passed.');
+
+  // ── Notifications ────────────────────────────────────────
+  const {deliveryCycle}=await import('../dist/notifications/engine.js');
+  const received=new Map();let failFirst=true;
+  const provider=createServer((req,res)=>{let raw='';req.on('data',c=>raw+=c);req.on('end',()=>{
+    const key=req.headers['idempotency-key'];const count=(received.get(key)?.length??0)+1;
+    received.set(key,[...(received.get(key)??[]),{auth:req.headers.authorization,...JSON.parse(raw)}]);
+    res.statusCode=failFirst&&count===1?503:200;res.end();});});
+  provider.listen(0);await once(provider,'listening');
+  process.env.NOTIFICATION_DELIVERY_URL='http://127.0.0.1:'+provider.address().port+'/send';
+  process.env.NOTIFICATION_DELIVERY_TOKEN='test-token';
+  const inbox=async user=>(await call('individual/notifications',{token:user.token})).items;
+  const latest=async(user,kind)=>(await inbox(user)).find(n=>n.kind===kind);
+
+  // Earlier circle activity already produced notifications.
+  assert.equal((await latest(bob,'circle-invite')).title,'Alice invited you to their circle');
+  assert.equal((await latest(alice,'circle-accepted')).title,'Bob joined your circle');
+  assert(await latest(bob,'circle-update'));
+
+  // Retries: the provider fails once, the delivery waits for its backoff, then succeeds.
+  await post('individual/circle/people/'+alice.id+'/check-in',undefined,{token:bob.token,status:204});
+  let request=await latest(alice,'check-in-request');
+  assert.deepEqual(request.deliveries.map(d=>[d.channel,d.state]),[['email','queued']]);
+  const start=new Date();
+  await deliveryCycle(start);
+  request=await latest(alice,'check-in-request');
+  assert.equal(request.deliveries[0].state,'queued');
+  assert.equal(request.deliveries[0].attempts,1);
+  assert.match(request.deliveries[0].lastError,/503/);
+  await deliveryCycle(start);
+  assert.equal((await latest(alice,'check-in-request')).deliveries[0].attempts,1);
+  await deliveryCycle(new Date(start.getTime()+2*60_000));
+  request=await latest(alice,'check-in-request');
+  assert.equal(request.deliveries[0].state,'sent');
+  // Delivery is not acknowledgement.
+  assert.equal(request.acknowledgedAt,null);
+  const sentBody=[...received.values()].flat().find(b=>b.target===alice.email);
+  assert.equal(sentBody.auth,'Bearer test-token');
+  assert(!sentBody.text.includes('Bob'),'external text stays discreet');
+
+  // Read state and acknowledgement belong to the recipient only.
+  await post('individual/notifications/'+request.id+'/acknowledge',undefined,{token:eve.token,status:404});
+  await post('individual/notifications/'+request.id+'/acknowledge',undefined,{token:alice.token,status:204});
+  assert((await latest(alice,'check-in-request')).acknowledgedAt);
+  assert((await call('individual/notifications/unread',{token:alice.token})).unread>0);
+  await post('individual/notifications/read',undefined,{token:alice.token,status:204});
+  assert.equal((await call('individual/notifications/unread',{token:alice.token})).unread,0);
+
+  // Preferences: with email off, routine notifications stay in-app.
+  await post('individual/circle/check-in-requests/answer',undefined,{token:alice.token,status:204});
+  assert.deepEqual(await call('individual/notification-preferences',{token:alice.token}),{email:true,sms:false});
+  await call('individual/notification-preferences',{method:'PUT',body:{email:false,sms:false},token:alice.token});
+  await post('individual/circle/people/'+alice.id+'/check-in',undefined,{token:bob.token,status:204});
+  assert.deepEqual((await latest(alice,'check-in-request')).deliveries,[]);
+
+  // Two workers running at once send each delivery exactly once.
+  failFirst=false;
+  const forEve2=await post('individual/circle',{email:eve.email,permissions:statusOnly},{token:alice.token,status:201});
+  const eveInvite=await latest(eve,'circle-invite');
+  assert.equal(eveInvite.deliveries.length,1);
+  const toEve=()=>[...received.values()].flat().filter(b=>b.target===eve.email).length;
+  const before=toEve();
+  await Promise.all([deliveryCycle(new Date(start.getTime()+3*60_000)),deliveryCycle(new Date(start.getTime()+3*60_000))]);
+  assert.equal((await latest(eve,'circle-invite')).deliveries[0].state,'sent');
+  assert.equal(toEve()-before,1);
+
+  // Without a provider, deliveries are skipped rather than retried forever.
+  delete process.env.NOTIFICATION_DELIVERY_URL;
+  await post('individual/circle/'+forEve2.id+'/reject',undefined,{token:eve.token,status:204});
+  await post('individual/circle',{email:eve.email,permissions:statusOnly},{token:alice.token,status:201});
+  await deliveryCycle(new Date(start.getTime()+4*60_000));
+  assert.equal((await latest(eve,'circle-invite')).deliveries[0].state,'skipped');
+  provider.close();
+  console.log('Phase 4 notification checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
   await mongoose.connection.dropDatabase();
