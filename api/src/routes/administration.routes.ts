@@ -19,10 +19,10 @@ export default defineRoutes(router => {
         await requireTenant(tenantId);
         return 'organization/'+tenantId;
       }
-      router.get('/'+path, async ctx => ctx.response.success(await Config.findById(await key(ctx.params.id)).select('value revision')), {validate:{params}});
+      router.get('/'+path, async ctx => ctx.response.success(await Config.findById(await key(path === 'platform' ? undefined : id.parse(ctx.params.id))).select('value revision')), {validate:{params}});
       router.put('/'+path, async ctx => {
         const {revision,value} = ctx.body as {revision:number;value:unknown};
-        const record = await save(await key(ctx.params.id), revision,value,auth.user(ctx).id);
+        const record = await save(await key(path === 'platform' ? undefined : id.parse(ctx.params.id)), revision,value,auth.user(ctx).id);
         return ctx.response.success({revision:record.revision,value:record.value});
       }, {validate:{params, body:z.strictObject({revision:z.number().int().nonnegative(),value:schema})}});
     }
