@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
+<title>SARIEL safety report</title>
+<style>
+body{font:1rem/1.5 system-ui;margin:8vh auto;padding:1rem;max-width:30rem;color:#143932}
+form,label{display:grid;gap:.5rem}form{gap:1rem}input,button{font:inherit;padding:.7rem}
+button{background:#13473c;color:white;border:0;border-radius:.35rem}output{display:block;margin-top:1rem}
+</style>
+<main><h1>Submit a safety report</h1><p>Use the private code for the safety level you want to report. A shared device may retain this visit in its history.</p>
+<form id="report" autocomplete="off">
+<label>Safety code<input name="secret" type="password" required minlength="43" maxlength="43"></label>
+<label>Incident category<input name="category" maxlength="120" value="welfare" required></label>
+<label>Country code (optional)<input name="country" maxlength="2" pattern="[A-Za-z]{2}" placeholder="KE"></label>
+<button type="submit" disabled>Send report</button>
+</form><noscript>Enable JavaScript to submit this report.</noscript>
+<output aria-live="polite"></output></main><script src="report.js" defer></script></html>
