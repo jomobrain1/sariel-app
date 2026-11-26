@@ -6,7 +6,7 @@ import { Configuration } from './configuration';
 import { useGetTenantMembersQuery } from '../tenancy/tenancy.api';
 import { actionError } from '../admin/action-error';
 
-const defaults=['Response manager','Response officer','Dispatcher','Welfare officer','Legal officer'].map(name=>({name,permissions:['Welfare officer','Legal officer'].includes(name)?['scope.read']:['scope.read','routing.read']}));
+const defaults=['Response manager','Response officer','Dispatcher','Welfare officer','Legal officer'].map(name=>({name,permissions:['Response manager','Dispatcher'].includes(name)?['scope.read','routing.read','incidents.respond','incidents.manage']:name==='Response officer'?['scope.read','routing.read','incidents.respond']:['scope.read']}));
 const api=tilcayoApi.injectEndpoints({endpoints:b=>({
   invite:b.mutation<{data:{token:string}},{id:string;email:string;role:string}>({query:({id,...body})=>({url:'/sariel/admin/invitations/'+id,method:'POST',body})}),
   accept:b.mutation<unknown,string>({query:token=>({url:'/sariel/staff/accept',method:'POST',body:{token}})}),
@@ -28,7 +28,7 @@ export function Workforce({id}:{id:string}){
     }catch(err){setMessage(actionError(err));}
   }
   return <><Configuration title="Staff roles" path={'admin/roles/'+id} initial={{roles:defaults}}/>
-    <p>Permissions are scope.read and routing.read. Removing a role revokes its permissions.</p>
+    <p>Permissions are scope.read, routing.read, incidents.respond and incidents.manage. Removing a role revokes its permissions.</p>
     <form className="tl-stack" onSubmit={submit}><h3>Invite staff</h3><label>Registered email<input className="tl-input" name="email" type="email" required/></label><label>Role<select className="tl-select" name="role">{options.map(o=><option key={o.name}>{o.name}</option>)}</select></label><button className="tl-btn tl-btn-primary">Create invitation</button></form>
     <form className="tl-stack" onSubmit={submit}><h3>Manage staff access</h3><label>Member<select className="tl-select" required name="member">{members.data?.data.filter(m=>!m.roles.includes('admin')).map(m=><option key={m.id} value={m.id}>{m.email}</option>)}</select></label><label>Access<select className="tl-select" name="role"><option value="">Suspend membership</option>{options.map(o=><option key={o.name}>{o.name}</option>)}</select></label><button className="tl-btn tl-btn-primary">Update access</button></form><p role="status">{message}</p>
   </>;

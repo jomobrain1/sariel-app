@@ -1,3 +1,4 @@
+import incidents from "./incidents/routes.js";
 import safetyGateway from "./individual/gateway.js";
 import safetyStatus from "./individual/status.js";
 import safetyIdentity from "./individual/identity.js";
@@ -20,6 +21,7 @@ app.routes(safetyProfiles);
 app.routes(safetyIdentity);
 app.routes(safetyStatus);
 app.routes(safetyGateway);
+app.routes(incidents);
 app.routes(administration);
 app.routes(workforce);
 app.routes(notesRoutes);
