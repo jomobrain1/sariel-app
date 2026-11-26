@@ -1,3 +1,4 @@
+import administration from "./routes/administration.routes.js";
 import { createApp, requestId, securityHeaders } from "@tilcayo/core";
 import healthRoutes from "./routes/health.routes.js";
 import notesRoutes from "./routes/notes.routes.js";
@@ -8,6 +9,7 @@ import adminOrdersRoutes from "./routes/admin-orders.routes.js";
 
 const app = createApp({ middleware: [auth.tenantMiddleware, auth.tenantAccessMiddleware, requestId(), securityHeaders()] });
 app.routes(healthRoutes);
+app.routes(administration);
 app.routes(notesRoutes);
 app.routes(authRoutes);
 app.routes(auth.adminRoutes);
