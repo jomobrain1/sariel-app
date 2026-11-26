@@ -10,7 +10,7 @@
 .sariel-rail footer {margin-top:auto}
 .sariel-rail footer a {color:white;text-decoration:none}
 .sariel-rail footer button {text-align:left;background:none;border:0;cursor:pointer;padding:4px 0}
-.sariel-content {width:100%;max-width:1440px;margin-inline:auto;min-width:0;padding:clamp(16px,3vw,48px)}
+.sariel-content {width:100%;max-width:1520px;margin-inline:auto;min-width:0;padding:clamp(16px,2.2vw,36px)}
 .sariel-content form label {display:grid;gap:5px}
 .sariel-content form input,.sariel-content form select,.sariel-content form textarea {max-width:100%}
 .sariel-content .account-card {max-width:54rem}
@@ -26,3 +26,16 @@
 .tenant-cards > .tl-admin-empty {grid-column:1/-1}
 .platform-account-bar {display:flex;justify-content:flex-end;align-items:center;margin-bottom:16px}
 .platform-account-bar .starter-account-popover {z-index:20;top:calc(100% + 6px)}
+
+.sariel-rail .rail-head {display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px}
+.rail-head>span {grid-column:1/-1}
+.rail-toggle {display:grid;place-items:center;width:36px;height:36px;border:1px solid #53766a;border-radius:8px;background:transparent;color:white;cursor:pointer}
+.rail-toggle:hover,.rail-toggle:focus-visible {background:#28584c}
+.sariel-console.rail-collapsed {grid-template-columns:72px minmax(0,1fr)}
+.rail-collapsed .sariel-rail {padding-inline:10px}
+.rail-collapsed .rail-head {grid-template-columns:auto;justify-items:center;justify-content:center;padding:0}
+.rail-collapsed .sariel-rail nav a {justify-content:center;padding-inline:8px}
+.platform-settings-tabs {display:flex;flex-wrap:wrap;gap:3px;background:#edf2ef;border:1px solid #d6e3db;border-radius:9px;padding:4px;margin-right:auto}
+.platform-settings-tabs a {padding:8px 12px;border-radius:6px;color:#425c50;text-decoration:none;font-size:.9rem;font-weight:600}
+.platform-settings-tabs a.active {background:white;color:#134e37;box-shadow:0 1px 4px #183a2926}
+@media(max-width:760px){.rail-collapsed .sariel-rail{flex-direction:row;align-items:center}.rail-collapsed .rail-head{display:flex;gap:8px}.platform-account-bar{align-items:flex-start;gap:6px}.platform-settings-tabs a{padding:7px 9px}.platform-settings-tabs{min-width:0}}

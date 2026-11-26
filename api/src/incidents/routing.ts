@@ -5,7 +5,7 @@ import { routing } from '../administration/policies.js';
 import { profiles } from '../individual/profile.js';
 import type { StatusEvent } from '../individual/status.js';
 
-export type AuditEntry={at:Date; action:string; tenant?:string; actor?:string; note?:string};
+export type AuditEntry={at:Date; action:string; tenant?:string; actor?:string; actorName?:string; requestId?:string; note?:string};
 export type Incident={
   handle:string; state:'pending'|'assigned'|'acknowledged'|'resolved'; tenant:string|null; officer:string|null;
   rule:string|null; audit:AuditEntry[]; version:number;

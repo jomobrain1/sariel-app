@@ -49,7 +49,14 @@ try {
   await call('sariel/admin/staff/'+org.id+'/'+member.id,{method:'PUT',token,body:{role:null},status:204});
   await call('sariel/staff/workspace',{token:staffToken,host,status:403});
   const audit=await call('sariel/admin/audit',{token});
-  assert(audit.some(entry=>entry.action==='staff.suspended'));
+  const adminUser=await call('auth/me',{token});
+  assert(audit.some(entry=>entry.action==='staff.suspended' && entry.actorName===adminUser.name));
+  await call('platform/tenants/'+org.id,{method:'DELETE',token,status:204});
+  const actors=await call('sariel/admin/trash/actors?ids='+org.id,{token});
+  assert.equal(actors[org.id],adminUser.name);
+  await call('admin/users/'+member.id,{method:'DELETE',token,status:204});
+  const userActors=await call('sariel/admin/trash/actors?kind=users&ids='+member.id,{token});
+  assert.equal(userActors[member.id],adminUser.name);
   console.log('Phase 2 API checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));

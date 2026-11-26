@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { AdminDashboard, AdminUsersTable, AdminUserStats, AdminMetricCard, ResourceLayout } from '@tilcayo/admin';
 import { Alert, Button, Input, TableSkeleton } from '@tilcayo/ui';
+import './users-toolbar.css';
+import { AccountIcon } from '../../components/account-icon';
 import { useAuth } from '../../app/auth';
 import { useGetAdminUsersQuery, type UsersQuery } from './admin.api';
 import { RoleAssignment } from './access.page';
@@ -30,8 +32,8 @@ export function UsersPage({ overview = false }: { overview?: boolean }) {
     <div className="tl-admin-tabs" role="group" aria-label="Filter users by role">
       {(['all', 'admin', 'member'] as const).map(role => <Button key={role} variant="ghost" aria-pressed={query.role === role} onClick={() => setQuery({ ...query, role, page: 1 })}>{role === 'all' ? 'All users' : role === 'admin' ? 'Administrators' : 'Members'}</Button>)}
     </div>
-    <form className="tl-admin-toolbar" onSubmit={submit} role="search">
-      <Input aria-label="Search users by name or email" placeholder="Search name or email..." maxLength={100} value={search} onChange={event => setSearch(event.target.value)} />
+    <form className="users-search-toolbar" onSubmit={submit} role="search">
+      <div className="users-search-box"><AccountIcon name="search"/><Input type="search" aria-label="Search users by name or email" placeholder="Name or email" maxLength={100} value={search} onChange={event => setSearch(event.target.value)} /></div>
       <select className="tl-select" aria-label="Filter users by status" value={query.status ?? 'all'} onChange={event => setQuery({ ...query, status: event.target.value as UsersQuery['status'], page: 1 })}><option value="all">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select>
       <Button type="submit">Search</Button>
     </form>

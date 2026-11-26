@@ -1,25 +1,49 @@
+import { useState } from 'react';
 import { AccountMenu } from '../../components/account-menu';
-import { Link, NavLink, Outlet } from 'react-router';
+import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { AccountIcon } from '../../components/account-icon';
 import { WorkspaceGate } from '../tenancy/workspace-switcher';
 import './platform.css';
 
-const links = [
+const primary = [
   ['Organizations', 'workspaces', 'globe'],
+  ['Incidents', 'incidents', 'activity'],
   ['Users', 'users', 'user'],
-  ['Platform settings', 'platform-settings', 'edit'],
-  ['Audit log', 'audit', 'shield'],
-  ['Trash', 'recovery', 'calendar'],
-  ['My profile', 'profile', 'user'],
+] as const;
+const settings = [
+  ['Platform', 'platform-settings'], ['Audit log', 'audit'], ['Trash', 'recovery'], ['My profile', 'profile'],
 ] as const;
 
 export function PlatformLayout() {
-  return <div className="sariel-console">
+  const path = useLocation().pathname.replace(/\/$/,'');
+  const incidents = path === '/admin/incidents';
+  const inSettings = settings.some(([,slug])=>path==='/admin/'+slug);
+  const [collapsed,setCollapsed] = useState(()=>{
+    try { return localStorage.getItem('sariel.sidebar.collapsed') === 'true'; } catch { return false; }
+  });
+  function toggle() {
+    setCollapsed(!collapsed);
+    try { localStorage.setItem('sariel.sidebar.collapsed',String(!collapsed)); } catch { /* Optional preference storage. */ }
+  }
+  return <div className={'sariel-console'+(incidents?' incident-console':'')+(collapsed?' rail-collapsed':'')}>
     <aside className="sariel-rail">
-      <header><Link to="/" className="sariel-home" aria-label="SARIEL home">SARIEL</Link><span>Platform administration</span></header>
-      <nav aria-label="Platform administration">{links.map(([label, path, icon]) =>
-        <NavLink key={path} to={'/admin/' + path}><AccountIcon name={icon}/>{label}</NavLink>)}</nav>
+      <header className="rail-head"><Link to="/" className="sariel-home" aria-label="SARIEL home">{collapsed ? 'S' : 'SARIEL'}</Link>
+        <button className="rail-toggle" aria-label={collapsed?'Expand sidebar':'Collapse sidebar'} title={collapsed?'Expand sidebar':'Collapse sidebar'}
+          aria-controls="platform-navigation" aria-expanded={!collapsed} onClick={toggle}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg>
+        </button>
+        {!collapsed && <span>Platform administration</span>}
+      </header>
+      <nav id="platform-navigation" aria-label="Platform administration">{primary.map(([label,slug,icon])=>
+        <NavLink key={slug} title={label} aria-label={label} to={'/admin/'+slug}><AccountIcon name={icon}/>{!collapsed && <span>{label}</span>}</NavLink>)}
+        <Link to="/admin/platform-settings" className={inSettings?'active':undefined} title="Settings" aria-label="Settings"><AccountIcon name="edit"/>{!collapsed && <span>Settings</span>}</Link>
+      </nav>
     </aside>
-    <main className="sariel-content"><header className="platform-account-bar"><AccountMenu platform /></header><WorkspaceGate><Outlet/></WorkspaceGate></main>
+    <main className="sariel-content">{!incidents && <header className="platform-account-bar">
+      {inSettings && <nav className="platform-settings-tabs" aria-label="Settings sections">{settings.map(([label,slug])=>
+        <NavLink key={slug} to={'/admin/'+slug}>{label}</NavLink>)}</nav>}
+      <AccountMenu platform /></header>}
+      <WorkspaceGate><Outlet/></WorkspaceGate>
+    </main>
   </div>;
 }

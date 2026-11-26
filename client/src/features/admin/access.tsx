@@ -10,7 +10,7 @@ export function AdminAccessGuard() {
   if (can('tenants')) {
     if (['/admin', '/admin/', '/admin/dashboard', '/admin/products', '/admin/access'].includes(pathname)) return <Navigate to="/admin/workspaces" replace />;
     if (pathname === '/admin/settings') return <Navigate to={section === 'trash' ? '/admin/recovery' : section === 'users' ? '/admin/users' : '/admin/platform-settings'} replace />;
-  } else if (['/admin/platform-settings', '/admin/audit', '/admin/recovery'].includes(pathname)) {
+  } else if (['/admin/incidents', '/admin/platform-settings', '/admin/audit', '/admin/recovery'].includes(pathname)) {
     return <Navigate to="/forbidden" replace />;
   }
   const settingsTab = can('users') ? 'users' : can('access') ? 'access' : can('trash') ? 'trash' : null;

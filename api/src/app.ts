@@ -1,3 +1,5 @@
+import { recordUserDeletion } from './administration/trash-attribution.js';
+import incidentLink from "./individual/incident-link.js";
 import incidents from "./incidents/routes.js";
 import safetyGateway from "./individual/gateway.js";
 import safetyStatus from "./individual/status.js";
@@ -14,13 +16,14 @@ import { auth } from "./auth.js";
 import adminProductsRoutes from "./routes/admin-products.routes.js";
 import adminOrdersRoutes from "./routes/admin-orders.routes.js";
 
-const app = createApp({ middleware: [auth.tenantMiddleware, auth.tenantAccessMiddleware, requestId(), securityHeaders()] });
+const app = createApp({ middleware: [auth.tenantMiddleware, auth.tenantAccessMiddleware, recordUserDeletion, requestId(), securityHeaders()] });
 app.routes(healthRoutes);
 app.routes(individualAccount);
 app.routes(safetyProfiles);
 app.routes(safetyIdentity);
 app.routes(safetyStatus);
 app.routes(safetyGateway);
+app.routes(incidentLink);
 app.routes(incidents);
 app.routes(administration);
 app.routes(workforce);

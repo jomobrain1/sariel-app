@@ -32,8 +32,8 @@ export function AuditPage(){
   const audit = configApi.useAuditQuery();
   return <section className="sariel-audit"><header><h1>Audit log</h1><button className="tl-btn tl-btn-outline" onClick={() => audit.refetch()}>Refresh</button></header>
     {audit.isError ? <p role="alert">Unable to load activity.</p> : audit.isLoading ? <p>Loading activity…</p> : audit.data?.data.length ?
-      <table><thead><tr><th>Time</th><th>Action</th><th>Actor ID</th></tr></thead><tbody>
-        {audit.data.data.map((entry,i) => <tr key={i}><td>{new Date(entry.createdAt).toLocaleString()}</td><td>{entry.action}</td><td>{entry.actorId}</td></tr>)}
+      <table><thead><tr><th>Time</th><th>Action</th><th>Performed by</th></tr></thead><tbody>
+        {audit.data.data.map((entry,i) => <tr key={i}><td>{new Date(entry.createdAt).toLocaleString()}</td><td>{entry.action}</td><td>{entry.actorName}</td></tr>)}
       </tbody></table> : <p>No activity recorded yet.</p>}
   </section>;
 }

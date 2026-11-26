@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Membership } from '@tilcayo/auth';
+import { Membership, Tenant } from '@tilcayo/auth';
 import { createHttpError, defineRoutes } from '@tilcayo/core';
 import { z } from 'zod';
 import { auth } from '../auth.js';
@@ -17,6 +17,7 @@ const note=z.string().trim().min(1).max(1500);
 const command=z.discriminatedUnion('action',[
   z.strictObject({action:z.literal('assign'),officer:id}),
   z.strictObject({action:z.literal('acknowledge')}),
+  z.strictObject({action:z.literal('dispatch'),confirmed:z.literal(true)}),
   z.strictObject({action:z.literal('note'),note}),
   z.strictObject({action:z.literal('refer'),tenant:id,note}),
   z.strictObject({action:z.literal('resolve'),note}),
@@ -45,7 +46,7 @@ async function inspect(event:StatusEvent,user:Staff){
   return {handle:incident.handle,state:incident.state,version:incident.version,officer:incident.officer,
     ...(fields.has('category')?{category:event.category}:{}),...(fields.has('severity')?{severity:severity(event.level)}:{}),
     ...(fields.has('country')?{country:match!.country}:{}),...(fields.has('incident-reference')?{reference:event._id}:{}),
-    timeline:incident.audit.filter(entry=>entry.tenant===user.tenant)};
+    timeline:incident.audit.filter(entry=>entry.tenant===user.tenant || entry.action.startsWith('gallery-'))};
 }
 export default defineRoutes(router=>{
   const authenticated=[...auth.requestMiddleware,auth.middleware];
@@ -80,7 +81,7 @@ export default defineRoutes(router=>{
       const cmd=body.command;
       const change:Partial<Incident>={};
       const at=new Date();
-      const audit:AuditEntry[]=[{at,tenant:user.tenant,actor:user.id,action:cmd.action}];
+      const audit:AuditEntry[]=[{at,tenant:user.tenant,actor:user.id,actorName:auth.user(ctx).name,action:cmd.action}];
       if(cmd.action==='assign'){
         if(!user.manager) throw denied();
         const membership=await Membership.first({tenantId:user.tenant,userId:cmd.officer,suspendedAt:null,deletedAt:null});
@@ -90,6 +91,8 @@ export default defineRoutes(router=>{
         if(incident.state!=='assigned') throw stale();
         change.state='acknowledged';
         change.officer=incident.officer??user.id;
+      }else if(cmd.action==='dispatch'){
+        if(incident.state!=='acknowledged' || incident.audit.some(e=>e.action==='dispatch')) throw stale();
       }else if(cmd.action==='refer'){
         if(!user.manager||cmd.tenant===user.tenant) throw denied();
         const source=(await eligible(event,user.tenant)).find(m=>m.rule.name===incident.rule);
@@ -114,6 +117,63 @@ export default defineRoutes(router=>{
   });
   router.group({prefix:'/api/platform/incidents',middleware:[...authenticated,platformOnly]},()=>{
     const pending={active:true,$or:[{'incident.state':'pending'},{incident:{$exists:false as const}}]};
+    router.get('/',async ctx=>{
+      const page=Number(ctx.query.page);
+      const perPage=25;
+      const search=String(ctx.query.search);
+      const group=String(ctx.query.group);
+      const level=Number(ctx.query.level);
+      const groupFilter=group==="all"?{}:{group};
+      const levelFilter=level?{level}:{};
+      const [result]=await events().aggregate([
+        {$match:{level:{$gte:2}}},
+        {$sort:{createdAt:-1,_id:-1}},
+        {$set:{accountId:{$convert:{input:'$owner',to:'objectId',onError:null,onNull:null}},
+          orgId:{$convert:{input:'$incident.tenant',to:'objectId',onError:null,onNull:null}}}},
+        {$lookup:{from:'users',localField:'accountId',foreignField:'_id',pipeline:[{$project:{name:1,email:1}}],as:'account'}},
+        {$lookup:{from:Tenant.raw.collection.name,localField:'orgId',foreignField:'_id',pipeline:[{$project:{name:1}}],as:'org'}},
+        {$project:{_id:0,reference:'$_id',level:1,category:1,createdAt:1,channel:1,
+          version:'$incident.version',signals:{$map:{input:{$filter:{input:{$ifNull:['$incident.audit',[]]},as:'e',
+            cond:{$in:['$$e.action',['gallery-road','gallery-bridge','gallery-mountain','acknowledge','dispatch']]}}},
+            as:'e',in:{action:'$$e.action',at:'$$e.at',actorName:'$$e.actorName'}}},
+          account:{$ifNull:[{$arrayElemAt:['$account',0]},null]},
+          organization:{$ifNull:[{$arrayElemAt:['$org.name',0]},null]},
+          state:{$ifNull:['$incident.state',{$cond:['$active','pending','resolved']}]}}}
+        ,{$set:{group:{$switch:{branches:[
+          {case:{$eq:['$state','pending']},then:'open'},
+          {case:{$eq:['$state','resolved']},then:'resolved'}],default:'progress'}}}},
+        ...(search?[{$match:{$or:['reference','category','account.name','account.email','organization'].map(field=>({
+          [field]:{$regex:search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),$options:'i'}
+        }))}}]:[]),
+        {$facet:{
+          items:[{$match:{...groupFilter,...levelFilter}},{$skip:(page-1)*perPage},{$limit:perPage}],
+          total:[{$match:{...groupFilter,...levelFilter}},{$count:'value'}],
+          levels:[{$match:groupFilter},{$group:{_id:'$level',count:{$sum:1}}}],
+          groups:[{$match:levelFilter},{$group:{_id:'$group',count:{$sum:1}}}]
+        }}
+      ]).toArray();
+      const counts=(rows:{_id:string|number;count:number}[])=>Object.fromEntries(rows.map(r=>[r._id,r.count]));
+      const total=result.total[0]?.value??0;
+      return ctx.response.success({items:result.items,total,hasNext:page*perPage<total,levels:counts(result.levels),groups:counts(result.groups)});
+    },{validate:{query:z.object({page:z.coerce.number().int().min(1).max(100000).default(1),search:z.string().trim().max(100).default(''),
+      group:z.enum(['all','open','progress','resolved']).default('all'),level:z.coerce.number().int().refine(n=>[0,2,3,4,5].includes(n)).default(0)})}});
+    const responseAction=z.discriminatedUnion('action',[
+      z.strictObject({action:z.literal('acknowledge'),version:z.number().int().nonnegative()}),
+      z.strictObject({action:z.literal('dispatch'),confirmed:z.literal(true),version:z.number().int().nonnegative()})
+    ]);
+    router.post('/:reference/response',async ctx=>{
+      const {action,version}=ctx.body as z.output<typeof responseAction>;
+      const filter={_id:String(ctx.params.reference),active:true,'incident.version':version};
+      const event=await events().findOne(filter);
+      if(!event?.incident) throw stale();
+      const {audit}=event.incident;
+      if(audit.some(e=>e.action===action) || (action==='dispatch' && !audit.some(e=>e.action==='acknowledge'))) throw stale();
+      const actor=auth.user(ctx);
+      const update=await events().updateOne(filter,{$inc:{'incident.version':1},
+        $push:{'incident.audit':{at:new Date(),action,actor:actor.id,actorName:actor.name}}});
+      if(!update.modifiedCount) throw stale();
+      return ctx.response.noContent();
+    },{validate:{params:z.object({reference:z.string().regex(/^[a-f0-9]{64}$/)}),body:responseAction}});
     router.get('/pending',async ctx=>{
       const items=await events().find(pending,{projection:{_id:1,createdAt:1}}).sort({createdAt:1,_id:1})
         .skip((Number(ctx.query.page)-1)*50).limit(50).toArray();
@@ -127,7 +187,7 @@ export default defineRoutes(router=>{
       if(incident.tenant){
         incident.audit=[...(event.incident?.audit??[{at:event.createdAt,action:'created'}]),
           {at:new Date(),action:'routed',tenant:incident.tenant,actor:auth.user(ctx).id}];
-        if(!(await events().updateOne(filter,{$set:{incident}})).modifiedCount) throw stale();
+        if(!(await events().updateOne({...filter,'incident.version':event.incident?.version??{$exists:false}},{$set:{incident}})).modifiedCount) throw stale();
       }
       return ctx.response.success({state:incident.state});
     },{validate:{params:z.object({reference:z.string().regex(/^[a-f0-9]{64}$/)})}});

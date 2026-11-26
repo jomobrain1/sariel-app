@@ -37,7 +37,7 @@ export async function recordStatus(owner:string,report:Report,channel:StatusEven
     const pending=await events().findOne({_id:key,'incident.state':'pending'});
     if(pending){
       const assigned=await initialIncident(pending);
-      if(assigned.tenant) await events().updateOne({_id:key,'incident.state':'pending'},{$set:{incident:assigned}});
+      if(assigned.tenant) await events().updateOne({_id:key,'incident.state':'pending','incident.version':pending.incident!.version},{$set:{incident:assigned}});
     }
   }
   return {reference:key,level:report.level,status:levels[report.level]};

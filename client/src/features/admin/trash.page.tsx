@@ -1,3 +1,4 @@
+import { configApi } from '../administration/configuration.api';
 import { useGetTenantsQuery, useRestoreTenantMutation } from '../tenancy/tenancy.api';
 import { useState } from 'react';
 import { ResourceLayout } from '@tilcayo/admin';
@@ -25,18 +26,21 @@ export function TrashPage() {
   const busy = tenantStatus.isLoading || userStatus.isLoading || productStatus.isLoading || orderStatus.isLoading;
   const result = kind === 'tenants' ? tenants : kind === 'users' ? users : kind === 'products' ? products : orders;
   const rows = kind === 'tenants' ? tenants.currentData?.data.items.map(item => ({ id: item.id, name: item.name, detail: item.slug + ' (' + item.status + ')' })) : kind === 'users' ? users.currentData?.data.items.map(item => ({ id: item.id, name: item.name, detail: item.email })) : kind === 'products' ? products.currentData?.data.items.map(item => ({ id: item._id, name: item.name, detail: item.sku })) : orders.currentData?.data.items.map(item => ({ id: item._id, name: item.productName, detail: item.customerEmail }));
+  const platformTrash = can('tenants');
+  const ids = platformTrash ? (rows ?? []).map(row => row.id).join(',') : '';
+  const deletions = configApi.useTrashActorsQuery({ids,kind}, {skip:!ids,refetchOnMountOrArgChange:true});
   const pagination = result.currentData?.data.pagination;
   return <ResourceLayout title="Trash" description="Deleted records stay here until you restore them. Nothing is permanently erased.">
     {error && <Alert variant="danger">{error}</Alert>}
     {!kinds.length ? <p>You need access to Users, Catalog or Orders to view deleted records.</p> : <section className="tl-admin-directory">
       <div className="tl-admin-tabs" role="group" aria-label="Deleted record type">{kinds.map(item => <Button key={item.key} variant="ghost" aria-pressed={kind === item.key} onClick={() => { setKind(item.key); setPage(1); setError(''); }}>{item.label}</Button>)}</div>
-      {result.isError ? <Alert variant="danger">Unable to load deleted records.</Alert> : result.isFetching && !result.currentData ? <TableSkeleton label="Loading trash" columns={3} /> : <Table><thead><tr><th>Name</th><th>Details</th><th>Action</th></tr></thead><tbody>
-        {rows?.map(item => <tr key={item.id}><td><strong>{item.name}</strong></td><td>{item.detail}</td><td><Button variant="outline" disabled={busy} onClick={async () => {
+      {result.isError ? <Alert variant="danger">Unable to load deleted records.</Alert> : result.isFetching && !result.currentData ? <TableSkeleton label="Loading trash" columns={platformTrash ? 4 : 3} /> : <Table><thead><tr><th>Name</th><th>Details</th>{platformTrash && <th>Deleted by</th>}<th>Action</th></tr></thead><tbody>
+        {rows?.map(item => <tr key={item.id}><td><strong>{item.name}</strong></td><td>{item.detail}</td>{platformTrash && <td>{deletions.currentData?.data[item.id] ?? (deletions.isFetching ? 'Loading…' : 'Not recorded')}</td>}<td><Button variant="outline" disabled={busy} onClick={async () => {
           setError(''); try { await (kind === 'tenants' ? restoreTenant(item.id) : kind === 'users' ? restoreUser(item.id) : kind === 'products' ? restoreProduct(item.id) : restoreOrder(item.id)).unwrap(); } catch (error) { setError(actionError(error)); }
         }}>Restore</Button></td></tr>)}
-        {!rows?.length && <tr><td colSpan={3}><div className="tl-admin-empty"><strong>Trash is empty</strong><p>Deleted {kind} will appear here.</p></div></td></tr>}
+        {!rows?.length && <tr><td colSpan={platformTrash ? 4 : 3}><div className="tl-admin-empty"><strong>Trash is empty</strong><p>Deleted {kind} will appear here.</p></div></td></tr>}
       </tbody></Table>}
-      {pagination && <footer className="tl-admin-directory-footer"><span>{pagination.total} deleted records ? Page {page} of {pagination.lastPage}</span><div className="tl-flex tl-gap-2"><Button variant="outline" disabled={result.isFetching || !pagination.hasPreviousPage} onClick={() => setPage(page - 1)}>Previous</Button><Button variant="outline" disabled={result.isFetching || !pagination.hasNextPage} onClick={() => setPage(page + 1)}>Next</Button></div></footer>}
+      {pagination && <footer className="tl-admin-directory-footer"><span>{pagination.total} deleted records · Page {page} of {pagination.lastPage}</span><div className="tl-flex tl-gap-2"><Button variant="outline" disabled={result.isFetching || !pagination.hasPreviousPage} onClick={() => setPage(page - 1)}>Previous</Button><Button variant="outline" disabled={result.isFetching || !pagination.hasNextPage} onClick={() => setPage(page + 1)}>Next</Button></div></footer>}
     </section>}
   </ResourceLayout>;
 }
