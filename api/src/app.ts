@@ -1,3 +1,7 @@
+import safetyStatus from "./individual/status.js";
+import safetyIdentity from "./individual/identity.js";
+import safetyProfiles from "./individual/profile.js";
+import individualAccount from "./individual/account.js";
 import workforce from "./routes/workforce.routes.js";
 import administration from "./routes/administration.routes.js";
 import { createApp, requestId, securityHeaders } from "@tilcayo/core";
@@ -10,6 +14,10 @@ import adminOrdersRoutes from "./routes/admin-orders.routes.js";
 
 const app = createApp({ middleware: [auth.tenantMiddleware, auth.tenantAccessMiddleware, requestId(), securityHeaders()] });
 app.routes(healthRoutes);
+app.routes(individualAccount);
+app.routes(safetyProfiles);
+app.routes(safetyIdentity);
+app.routes(safetyStatus);
 app.routes(administration);
 app.routes(workforce);
 app.routes(notesRoutes);
