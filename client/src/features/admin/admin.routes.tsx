@@ -1,3 +1,5 @@
+import { PlatformSettings, AuditPage } from '../administration/configuration';
+import { TrashPage } from './trash.page';
 import { Navigate, type RouteObject } from 'react-router';
 import { RequireAuth } from '../../middleware/auth';
 import { NotFoundPage } from '../../pages/not-found.page';
@@ -18,7 +20,10 @@ export const adminRoutes: RouteObject[] = [{
     { path: 'users', element: <UsersPage /> },
     { path: 'products', element: <ProductsPage /> },
     { path: 'settings', element: <SettingsPage /> },
-    { path: 'workspaces', element: <TenantsPage administrationOnly /> },
+    { path: 'platform-settings', element: <PlatformSettings /> },
+    { path: 'audit', element: <AuditPage /> },
+    { path: 'recovery', element: <TrashPage /> },
+    { path: 'workspaces', element: <TenantsPage /> },
     { path: 'access', element: <Navigate to="/admin/settings?section=access" replace /> },
     { path: 'trash', element: <Navigate to="/admin/settings?section=trash" replace /> },
     { path: 'profile', element: <ProfilePage /> },

@@ -7,6 +7,12 @@ export function AdminAccessGuard() {
   if (!Object.keys(tabLabels).some(can)) return <Navigate to="/forbidden" replace />;
   const section = new URLSearchParams(search).get('section');
   if (pathname === '/admin/settings' && section === 'tenants') return <Navigate to={can('tenants') ? '/admin/workspaces' : '/forbidden'} replace />;
+  if (can('tenants')) {
+    if (['/admin', '/admin/', '/admin/dashboard', '/admin/products', '/admin/access'].includes(pathname)) return <Navigate to="/admin/workspaces" replace />;
+    if (pathname === '/admin/settings') return <Navigate to={section === 'trash' ? '/admin/recovery' : section === 'users' ? '/admin/users' : '/admin/platform-settings'} replace />;
+  } else if (['/admin/platform-settings', '/admin/audit', '/admin/recovery'].includes(pathname)) {
+    return <Navigate to="/forbidden" replace />;
+  }
   const settingsTab = can('users') ? 'users' : can('access') ? 'access' : can('trash') ? 'trash' : null;
   if (pathname === '/admin/settings' && !section && settingsTab) return <Navigate to={'/admin/settings?section=' + settingsTab} replace />;
   const productTabs = ['catalog', 'inventory', 'categories', 'orders'];

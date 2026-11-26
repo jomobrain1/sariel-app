@@ -584,3 +584,9 @@
 .starter-toast button { width: 1.75rem; height: 1.75rem; min-height: 0; color: var(--tl-text-muted); }
 
 .account-identity > .profile-photo-settings{grid-column:1/-1;width:100%}
+
+.starter-account:has(.starter-profile-link) { display:flex; align-items:center; gap:.6rem; }
+.starter-profile-link { color:inherit; font-weight:600; text-decoration:none; white-space:nowrap; }
+.starter-profile-link:hover { text-decoration:underline; }
+.starter-account-popover .account-sign-out {color:#913b37}
+.starter-account-popover .account-sign-out:hover {background:#fcf1ef}
