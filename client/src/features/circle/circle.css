@@ -114,3 +114,14 @@
 .circle-status.level-0 {background:#4b5a56}
 .circle-status.level-2,.circle-status.level-3 {background:#8a5a00}
 .circle-status.level-0 :is(span,small),.circle-status.level-2 :is(span,small),.circle-status.level-3 :is(span,small) {color:#f1ebe0}
+
+/* Quick update options */
+.circle-presets {display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.circle-presets button {min-height:38px;padding:0 14px;border:1px solid #c9d3cf;border-radius:999px;background:#fff;color:#14231f;font-weight:600;font-size:.9rem}
+.circle-presets button:hover {border-color:#9fb3ac}
+.circle-presets button[aria-pressed=true] {border-color:#0f4d3f;background:#0f4d3f;color:#fff}
+.circle-preset-fields {display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:10px}
+.circle-preset-fields:has(> label:only-child) {grid-template-columns:1fr}
+.circle-preset-fields label {display:grid;gap:6px;font-weight:700;font-size:.9rem}
+.circle-preset-fields input {min-height:44px;padding:0 12px;border:1px solid #c9d3cf;border-radius:8px;font:inherit;font-weight:500;color:inherit;background:#fff;min-width:0}
+@media(max-width:520px){.circle-preset-fields{grid-template-columns:1fr}}
