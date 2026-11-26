@@ -1,3 +1,4 @@
+import safetyIdentity from "./individual/identity.js";
 import safetyProfiles from "./individual/profile.js";
 import individualAccount from "./individual/account.js";
 import workforce from "./routes/workforce.routes.js";
@@ -14,6 +15,7 @@ const app = createApp({ middleware: [auth.tenantMiddleware, auth.tenantAccessMid
 app.routes(healthRoutes);
 app.routes(individualAccount);
 app.routes(safetyProfiles);
+app.routes(safetyIdentity);
 app.routes(administration);
 app.routes(workforce);
 app.routes(notesRoutes);
