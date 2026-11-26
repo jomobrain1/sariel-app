@@ -1,3 +1,4 @@
+import safetyProfiles from "./individual/profile.js";
 import individualAccount from "./individual/account.js";
 import workforce from "./routes/workforce.routes.js";
 import administration from "./routes/administration.routes.js";
@@ -12,6 +13,7 @@ import adminOrdersRoutes from "./routes/admin-orders.routes.js";
 const app = createApp({ middleware: [auth.tenantMiddleware, auth.tenantAccessMiddleware, requestId(), securityHeaders()] });
 app.routes(healthRoutes);
 app.routes(individualAccount);
+app.routes(safetyProfiles);
 app.routes(administration);
 app.routes(workforce);
 app.routes(notesRoutes);
