@@ -73,8 +73,14 @@ export function WelfareCard() {
       <div className="welfare-actions">
         <button className="welfare-primary" disabled={checking.isLoading} onClick={() => void checkIn()}>{checking.isLoading ? 'Checking in…' : 'I’m OK, check in'}</button>
         <button className="welfare-ghost" onClick={() => setEditing(true)}>Settings</button>
-        <button className="welfare-link" disabled={saving.isLoading} onClick={() => void save({ ...data, enabled: false })}>Turn off</button>
+        <button className="welfare-link" disabled={saving.isLoading} onClick={() => {
+          if (!confirm('Turn off check-ins? Your circle won’t be alerted if you go quiet.')) return;
+          // Send only the settings fields; the API rejects anything else.
+          void save({ enabled: false, intervalHours: data.intervalHours, graceHours: data.graceHours,
+            shareLocation: data.shareLocation, escalateAfterHours: data.escalateAfterHours });
+        }}>Turn off</button>
       </div>
+      {saving.isError && <p role="alert" className="welfare-error">Couldn’t turn off check-ins. Try again.</p>}
       {!!data.events.length && <details className="welfare-history"><summary>History</summary>
         <ol>{data.events.slice(0, 10).map(e => <li key={e.id}><span>{eventText[e.kind] ?? e.kind}{e.detail && <small>{e.detail}</small>}</span><time dateTime={e.at}>{date(e.at)}</time></li>)}</ol>
       </details>}
