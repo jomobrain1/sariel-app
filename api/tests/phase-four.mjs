@@ -93,6 +93,46 @@ try {
   await call('individual/circle/'+bobCircle.id,{method:'DELETE',token:eve.token,status:404});
 
   console.log('Phase 4 circle checks passed.');
+
+  // ── Updates ──────────────────────────────────────────────
+  await post('individual/updates',{text:'   '},{token:alice.token,status:422});
+  await post('individual/updates',{text:'x'.repeat(281)},{token:alice.token,status:422});
+  const trip=await post('individual/updates',{text:'Going to Russia for work'},{token:alice.token,status:201});
+  assert.equal((await call('individual/updates',{token:alice.token}))[0].text,'Going to Russia for work');
+  const feed=await call('individual/circle/feed',{token:bob.token});
+  assert.equal(feed[0].text,'Going to Russia for work');
+  assert.equal(feed[0].name,'Alice');
+  assert.equal((await call('individual/circle/feed',{token:eve.token})).length,0);
+  await call('individual/circle/people/'+alice.id+'/updates',{token:eve.token,status:404});
+  assert.equal((await call('individual/circle/people/'+alice.id+'/updates',{token:bob.token})).length,1);
+  await call('individual/circle/'+invited.id,{method:'PATCH',body:{permissions:{status:true,location:true,updates:false}},token:alice.token});
+  await call('individual/circle/people/'+alice.id+'/updates',{token:bob.token,status:404});
+  assert.equal((await call('individual/circle/feed',{token:bob.token})).length,0);
+  await call('individual/updates/'+trip.id,{method:'DELETE',token:bob.token,status:404});
+  await call('individual/updates/'+trip.id,{method:'DELETE',token:alice.token,status:204});
+
+  // ── Location ─────────────────────────────────────────────
+  const spot=(minutesAgo,lat=-1.2921)=>({clientId:randomUUID(),latitude:lat,longitude:36.8219,accuracy:25,recordedAt:new Date(Date.now()-minutesAgo*60_000).toISOString()});
+  await post('individual/location',{points:[spot(1)]},{token:alice.token,status:409});
+  assert.equal((await call('individual/location/settings',{token:alice.token})).sharing,false);
+  await call('individual/location/settings',{method:'PUT',body:{sharing:true},token:alice.token});
+  await post('individual/location',{points:[{...spot(1),latitude:91}]},{token:alice.token,status:422});
+  await post('individual/location',{points:[spot(-30)]},{token:alice.token,status:422});
+  const repeated=spot(10,-1.30);
+  const sent=await post('individual/location',{points:[repeated,spot(5,-1.29),spot(60*24*8)]},{token:alice.token});
+  assert.deepEqual(sent,{accepted:2,skipped:1});
+  await post('individual/location',{points:[repeated]},{token:alice.token});
+  assert.equal((await call('individual/location',{token:alice.token})).length,2);
+  const seen=await call('individual/circle/people/'+alice.id+'/location',{token:bob.token});
+  assert.equal(seen.sharing,true);
+  assert.equal(seen.latest.latitude,-1.29);
+  assert.equal(seen.history.length,2);
+  await call('individual/circle/people/'+alice.id+'/location',{token:eve.token,status:404});
+  await call('individual/circle/'+invited.id,{method:'PATCH',body:{permissions:{status:true,location:false,updates:true}},token:alice.token});
+  await call('individual/circle/people/'+alice.id+'/location',{token:bob.token,status:404});
+  await call('individual/location',{method:'DELETE',token:alice.token,status:204});
+  assert.equal((await call('individual/location',{token:alice.token})).length,0);
+  console.log('Phase 4 updates and location checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
   await mongoose.connection.dropDatabase();

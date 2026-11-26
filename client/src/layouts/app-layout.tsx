@@ -2,6 +2,7 @@ import { WorkspaceGate } from '../features/tenancy/workspace-switcher';
 import { Outlet } from 'react-router'
 import { SiteHeader } from '../components/site-header'
 import { Toaster } from '../components/toaster'
+import { LocationSharer } from '../features/circle/location-sharer'
 
 export function AppLayout() {
   return (
@@ -12,6 +13,7 @@ export function AppLayout() {
         <WorkspaceGate><Outlet /></WorkspaceGate>
       </main>
       <Toaster />
+      <LocationSharer />
     </div>
   )
 }

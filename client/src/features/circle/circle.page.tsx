@@ -72,6 +72,112 @@ function MemberRow({ member }: { member: CircleMember }) {
   </li>;
 }
 
+const ago = (value: string) => {
+  const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 24 * 60) return `${Math.round(minutes / 60)} h ago`;
+  return date(value);
+};
+const mapLink = (p: { latitude: number; longitude: number }) => `https://www.openstreetmap.org/?mlat=${p.latitude}&mlon=${p.longitude}#map=16/${p.latitude}/${p.longitude}`;
+const coordinates = (p: { latitude: number; longitude: number }) => `${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}`;
+
+function UpdateComposer() {
+  const [text, setText] = useState('');
+  const [post, posting] = circleApi.usePostUpdateMutation();
+  const [remove] = circleApi.useDeleteUpdateMutation();
+  const mine = circleApi.useMyUpdatesQuery();
+  const recent = mine.currentData?.data.slice(0, 3) ?? [];
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!text.trim()) return;
+    try { await post(text.trim()).unwrap(); setText(''); } catch { /* The error message below stays visible. */ }
+  }
+  return <section className="circle-card circle-composer">
+    <h2>Share an update</h2>
+    <p className="circle-sub">Let your circle know what you’re up to.</p>
+    <form onSubmit={submit}>
+      <textarea aria-label="Update" maxLength={280} rows={3} placeholder="e.g. Travelling to Nairobi today, back on Friday" value={text} onChange={e => setText(e.target.value)} />
+      <div className="circle-composer-bar"><small>{280 - text.length} characters left</small>
+        <button className="circle-primary" disabled={posting.isLoading || !text.trim()}>{posting.isLoading ? 'Posting…' : 'Post update'}</button></div>
+      {posting.isError && <p role="alert" className="circle-error">Couldn’t post your update. Try again.</p>}
+    </form>
+    {!!recent.length && <ul className="circle-updates">{recent.map(u => <li key={u.id}>
+      <p>{u.text}</p><small>{ago(u.createdAt)} · <button type="button" className="circle-link" onClick={() => void remove(u.id)}>Delete</button></small>
+    </li>)}</ul>}
+  </section>;
+}
+
+function LocationCard() {
+  const settings = circleApi.useLocationSettingsQuery();
+  const history = circleApi.useMyLocationsQuery(undefined, { pollingInterval: 60_000 });
+  const [toggle, toggling] = circleApi.useSetLocationSharingMutation();
+  const [clear, clearing] = circleApi.useClearLocationsMutation();
+  const [problem, setProblem] = useState('');
+  const config = settings.currentData?.data;
+  const latest = history.currentData?.data[0];
+  const supported = typeof navigator !== 'undefined' && 'geolocation' in navigator;
+  function change(next: boolean) {
+    setProblem('');
+    if (!next) { void toggle(false); return; }
+    if (!supported) { setProblem('This browser can’t share location.'); return; }
+    // Ask for permission first so the switch only turns on when the browser allows it.
+    navigator.geolocation.getCurrentPosition(() => void toggle(true), () => setProblem('Location permission was blocked. Allow it in your browser settings.'), { timeout: 30_000 });
+  }
+  return <section className="circle-card circle-location">
+    <div className="circle-location-head">
+      <span className="circle-icon"><AccountIcon name="globe" /></span>
+      <div><h2>Location sharing</h2><p className="circle-sub">Sent every {config?.intervalMinutes ?? 5} minutes while Sariel is open.</p></div>
+      <label className="circle-switch"><input type="checkbox" role="switch" checked={config?.sharing ?? false} disabled={!config || toggling.isLoading} onChange={e => change(e.target.checked)} /><span aria-hidden="true" /><span className="circle-sr-only">Share my location</span></label>
+    </div>
+    {problem && <p role="alert" className="circle-error">{problem}</p>}
+    <dl className="circle-facts">
+      <div><dt>Last sent</dt><dd>{latest ? ago(latest.recordedAt) : 'Not yet'}</dd></div>
+      <div><dt>Accuracy</dt><dd>{latest ? `±${Math.round(latest.accuracy)} m` : '—'}</dd></div>
+      <div><dt>Kept for</dt><dd>{config?.retentionDays ?? 30} days</dd></div>
+    </dl>
+    <p className="circle-hint">Only people you allow can see your location.{' '}
+      {!!history.currentData?.data.length && <button type="button" className="circle-link" disabled={clearing.isLoading} onClick={() => { if (confirm('Delete your whole location history?')) void clear(); }}>Delete my history</button>}</p>
+  </section>;
+}
+
+function CircleFeed() {
+  const feed = circleApi.useFeedQuery(undefined, { pollingInterval: 60_000 });
+  const items = feed.currentData?.data ?? [];
+  return <section className="circle-card">
+    <h2>Latest from your circle</h2>
+    {feed.isError ? <p role="alert">Couldn’t load updates.</p> : !feed.currentData ? <p role="status">Loading…</p> : items.length ? <ul className="circle-list">{items.map(item => <li key={item.id} className="circle-row circle-feed-row">
+      <span className="circle-avatar" aria-hidden="true">{initials(item.name)}</span>
+      <div className="circle-row-main"><strong>{item.name} <small>· {ago(item.createdAt)}</small></strong><p>{item.text}</p></div>
+    </li>)}</ul> : <div className="circle-empty"><AccountIcon name="activity" /><p>Updates from people who share with you will appear here.</p></div>}
+  </section>;
+}
+
+function PersonLocation({ owner }: { owner: string }) {
+  const location = circleApi.usePersonLocationQuery(owner, { pollingInterval: 60_000 });
+  const data = location.currentData?.data;
+  if (!data) return null;
+  return <section className="circle-person-block">
+    <h3>Location</h3>
+    {data.latest ? <div className="circle-place">
+      <div><strong>{coordinates(data.latest)}</strong><small>±{Math.round(data.latest.accuracy)} m · {ago(data.latest.recordedAt)}{!data.sharing && ' · sharing paused'}</small></div>
+      <a className="circle-ghost" href={mapLink(data.latest)} target="_blank" rel="noreferrer">Open map</a>
+    </div> : <p>No location shared yet.</p>}
+    {data.history.length > 1 && <details className="circle-trail"><summary>Past 24 hours ({data.history.length} points)</summary>
+      <ol>{data.history.slice(0, 12).map(p => <li key={p.recordedAt}><a href={mapLink(p)} target="_blank" rel="noreferrer">{coordinates(p)}</a><time dateTime={p.recordedAt}>{date(p.recordedAt)}</time></li>)}</ol>
+    </details>}
+  </section>;
+}
+
+function PersonUpdates({ owner }: { owner: string }) {
+  const list = circleApi.usePersonUpdatesQuery(owner, { pollingInterval: 60_000 });
+  const items = list.currentData?.data ?? [];
+  return <section className="circle-person-block">
+    <h3>Updates</h3>
+    {items.length ? <ul className="circle-updates">{items.slice(0, 5).map(u => <li key={u.id}><p>{u.text}</p><small>{ago(u.createdAt)}</small></li>)}</ul> : <p>No updates yet.</p>}
+  </section>;
+}
+
 function PersonDetail({ owner, entry, close }: { owner: string; entry: string; close: () => void }) {
   const person = circleApi.usePersonQuery(owner, { pollingInterval: 60_000 });
   const [ask, asking] = circleApi.useRequestCheckInMutation();
@@ -85,6 +191,8 @@ function PersonDetail({ owner, entry, close }: { owner: string; entry: string; c
       <span>Safety status</span><strong>{labels[data.status.level]}</strong>
       {data.status.reportedAt && <small>Updated {date(data.status.reportedAt)}</small>}
     </section>}
+    {data.permissions.location && <PersonLocation owner={owner} />}
+    {data.permissions.updates && <PersonUpdates owner={owner} />}
     <section className="circle-person-block">
       <h3>Check in</h3>
       <p>{request ? request.answeredAt ? `${data.name} checked in ${date(request.answeredAt)}.` : `You asked ${date(request.createdAt)}. Waiting for a reply.` : `Ask ${data.name} to confirm they’re OK.`}</p>
@@ -133,6 +241,11 @@ export function CirclePage() {
     </section>}
 
     <div className="circle-grid">
+      <UpdateComposer />
+      <LocationCard />
+    </div>
+
+    <div className="circle-grid">
       <section className="circle-card">
         <h2>People in my circle</h2>
         <p className="circle-sub">They can see only what you allow.</p>
@@ -151,6 +264,8 @@ export function CirclePage() {
           : <div className="circle-empty"><AccountIcon name="shield" /><p>When someone adds you to their circle, they’ll appear here.</p></div>}
       </section>
     </div>
+
+    <CircleFeed />
 
     <Modal open={inviting} title="Invite to your circle" onClose={() => setInviting(false)}>
       {inviting && <InviteForm done={() => { setInviting(false); setNotice('Invite sent.'); }} />}
