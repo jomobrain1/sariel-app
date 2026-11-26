@@ -14,7 +14,7 @@ export const reportInput=z.strictObject({
 const update=reportInput.extend({level:z.number().int().min(0).max(5)});
 export type Report=z.output<typeof update>;
 export interface StatusEvent {
-  _id:string; owner:string; level:number; channel:'account'|'gateway'; createdAt:Date;
+  _id:string; owner:string; level:number; channel:'account'|'gateway'|'welfare'; createdAt:Date;
   incident?:Incident; active:boolean; category:string; country?:string; fingerprint:string;
 }
 export const events=()=>mongoose.connection.collection<StatusEvent>('sariel_safety_events');
@@ -51,10 +51,17 @@ export async function currentStatus(owner:string,channels?:StatusEvent['channel'
   const level=latest && (latest.active || latest.level<2)?latest.level:0;
   return {level,status:levels[level],reportedAt:latest?.createdAt??null};
 }
+// Lets other features (welfare check-ins) react when someone confirms they're safe from the dashboard.
+const safeListeners:((owner:string)=>Promise<void>)[]=[];
+export function onSafeCheckIn(listener:(owner:string)=>Promise<void>){ safeListeners.push(listener); }
 export default defineRoutes(router=>{
   router.group({prefix:'/api/individual',middleware:individual},()=>{
-    router.post('/status',async ctx=>ctx.response.success(await recordStatus(auth.user(ctx).id,ctx.body as Report,'account')),
-      {validate:{body:update}});
+    router.post('/status',async ctx=>{
+      const owner=auth.user(ctx).id;
+      const result=await recordStatus(owner,ctx.body as Report,'account');
+      if(result.level===1) await Promise.all(safeListeners.map(listener=>listener(owner).catch(()=>undefined)));
+      return ctx.response.success(result);
+    },{validate:{body:update}});
     router.get('/status',async ctx=>ctx.response.success(await currentStatus(auth.user(ctx).id)));
     router.get('/status/history',async ctx=>{
       const history=await events().find({owner:auth.user(ctx).id},{projection:{_id:1,level:1,active:1,channel:1,createdAt:1}})

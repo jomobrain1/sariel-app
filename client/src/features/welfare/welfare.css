@@ -1,0 +1,39 @@
+.welfare-card {display:grid;gap:16px}
+.welfare-card button,.welfare-card select {font:inherit}
+.welfare-head {display:flex;align-items:center;gap:14px}
+.welfare-head > div {flex:1;min-width:0}
+.welfare-head h2 {margin:0;font-size:1.2rem}
+.welfare-head p {margin:4px 0 0;color:#5b6b66}
+.welfare-icon {flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#eaf3ef;color:#0f4d3f}
+.welfare-icon .account-icon {width:22px;height:22px}
+.welfare-pill {flex:none;padding:4px 12px;border-radius:999px;background:#e4f1ea;color:#0f4d3f;font-size:.82rem;font-weight:700}
+.welfare-card.tone-due .welfare-pill {background:#fbf0d9;color:#7a4f00}
+.welfare-card.tone-alert {border-color:#ecc4be}
+.welfare-card.tone-alert .welfare-pill {background:#fbe4e1;color:#8f2a22}
+.welfare-facts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
+.welfare-facts div {padding:12px 14px;border-radius:10px;background:#f6faf8}
+.welfare-facts dt {font-size:.82rem;color:#5b6b66}
+.welfare-facts dd {margin:4px 0 0;font-weight:700}
+.welfare-alert {margin:0;padding:12px 14px;border-radius:10px;background:#fbefed;color:#7a231c;line-height:1.5}
+.welfare-explain {margin:0;color:#5b6b66;line-height:1.55}
+.welfare-actions {display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.safety-dashboard .welfare-card .welfare-primary,.welfare-card .welfare-primary {min-height:44px;padding:0 18px;border:1px solid #0f4d3f;border-radius:8px;background:#0f4d3f;color:#fff;font-weight:700;cursor:pointer}
+.welfare-card .welfare-primary:hover:not(:disabled) {background:#0b3f33}
+.safety-dashboard .welfare-card .welfare-ghost,.welfare-card .welfare-ghost {min-height:44px;padding:0 16px;border:1px solid #c9d3cf;border-radius:8px;background:#fff;color:#0f4d3f;font-weight:600;cursor:pointer}
+.safety-dashboard .welfare-card .welfare-link,.welfare-card .welfare-link {min-height:auto;padding:0;border:0;background:none;color:#5b6b66;text-decoration:underline;font-weight:500;cursor:pointer;margin-left:auto}
+.welfare-card button:disabled {opacity:.6;cursor:wait}
+.welfare-history summary {cursor:pointer;font-weight:600;color:#0f4d3f}
+.welfare-history ol {list-style:none;margin:10px 0 0;padding:0}
+.welfare-history li {display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #e1e9e5;font-size:.92rem}
+.welfare-history li span {display:grid;gap:2px}
+.welfare-history small,.welfare-history time {color:#5b6b66;font-size:.85rem}
+.welfare-history time {flex:none}
+.welfare-form {display:grid;gap:14px}
+.welfare-form label {display:grid;gap:8px;font-weight:700;font-size:.95rem}
+.welfare-form select {min-height:46px;padding:0 12px;border:1px solid #c9d3cf;border-radius:8px;background:#fff;color:inherit;font-weight:500}
+.welfare-form .welfare-check {display:flex;align-items:flex-start;gap:10px;font-weight:600}
+.welfare-check input {width:18px;height:18px;margin:2px 0 0;accent-color:#0f4d3f}
+.welfare-check span {display:grid;gap:2px}
+.welfare-check small {font-weight:400;color:#5b6b66}
+.welfare-error {margin:0;color:#a3342b}
+@media(max-width:480px){.welfare-facts{grid-template-columns:1fr}.welfare-history li{flex-direction:column;gap:2px}}

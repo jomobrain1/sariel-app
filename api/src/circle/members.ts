@@ -47,6 +47,10 @@ export async function recipients(owner:string, permission:keyof Permissions) {
   return rows.map(r => r.member!).filter(Boolean);
 }
 
+export async function closeCheckInRequests(owner:string) {
+  await checkIns().updateMany({owner, answeredAt:null}, {$set:{answeredAt:new Date()}});
+}
+
 export async function names(ids:string[]) {
   const valid = [...new Set(ids)].filter(id => /^[a-f0-9]{24}$/.test(id)).map(id => new mongoose.Types.ObjectId(id));
   const rows = valid.length ? await users().find({_id:{$in:valid}}, {projection:{name:1}}).toArray() : [];
@@ -58,7 +62,8 @@ type CircleEvent =
   | {kind:'invited'; entry:Member; ownerName:string}
   | {kind:'accepted'; entry:Member; memberName:string}
   | {kind:'check-in-requested'; owner:string; requester:string; requesterName:string}
-  | {kind:'update-posted'; owner:string; ownerName:string; update:string; text:string};
+  | {kind:'update-posted'; owner:string; ownerName:string; update:string; text:string}
+  | {kind:'checked-in'; owner:string};
 const listeners: ((event:CircleEvent) => Promise<void>)[] = [];
 export function onCircleEvent(listener:(event:CircleEvent) => Promise<void>) { listeners.push(listener); }
 export async function emit(event:CircleEvent) {
@@ -167,7 +172,7 @@ export default defineRoutes(router => {
       return ctx.response.success({
         owner, name, permissions,
         // Discreet link and gallery reports never reach circle members.
-        status:permissions.status ? await currentStatus(owner, ['account']) : null,
+        status:permissions.status ? await currentStatus(owner, ['account', 'welfare']) : null,
         lastCheckInRequest:request ? {createdAt:request.createdAt, answeredAt:request.answeredAt} : null,
       });
     }, {validate:{params:personParams}});
@@ -188,7 +193,8 @@ export default defineRoutes(router => {
     router.post('/check-in-requests/answer', async ctx => {
       const owner = auth.user(ctx).id;
       await recordStatus(owner, {level:1, category:'welfare', requestId:randomUUID()}, 'account');
-      await checkIns().updateMany({owner, answeredAt:null}, {$set:{answeredAt:new Date()}});
+      await closeCheckInRequests(owner);
+      await emit({kind:'checked-in', owner});
       return ctx.response.noContent();
     });
   });

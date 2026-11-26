@@ -207,6 +207,79 @@ try {
   assert.equal((await latest(eve,'circle-invite')).deliveries[0].state,'skipped');
   provider.close();
   console.log('Phase 4 notification checks passed.');
+
+  // ── Welfare monitoring ───────────────────────────────────
+  const {welfareCycle}=await import('../dist/welfare/welfare.js');
+  const H=3_600_000;
+  // Start from a clean slate: close Alice's earlier test incidents, which would otherwise outrank Unknown.
+  await mongoose.connection.collection('sariel_safety_events').updateMany({owner:alice.id},{$set:{active:false}});
+  const welfare=()=>call('individual/welfare',{token:alice.token});
+  assert.equal((await welfare()).enabled,false);
+  const plan={enabled:true,intervalHours:6,graceHours:1,shareLocation:true,escalateAfterHours:2};
+  await call('individual/welfare',{method:'PUT',body:{...plan,intervalHours:5},token:alice.token,status:422});
+  const t0=Date.now();
+  let w=await call('individual/welfare',{method:'PUT',body:plan,token:alice.token});
+  assert.equal(w.state,'ok');
+  assert(Math.abs(new Date(w.dueAt).getTime()-(t0+6*H))<60_000);
+  await call('individual/circle/'+invited.id,{method:'PATCH',body:{permissions:all},token:alice.token});
+  await post('individual/location',{points:[spot(2,-1.2833)]},{token:alice.token});
+
+  // On time: nothing happens.
+  assert.equal(await welfareCycle(new Date(t0+H)),0);
+  // Due: the person is reminded first, once.
+  await welfareCycle(new Date(t0+6*H+60_000));
+  await welfareCycle(new Date(t0+6*H+120_000));
+  assert.equal((await welfare()).state,'reminded');
+  assert.equal((await inbox(alice)).filter(n=>n.kind==='welfare-reminder').length,1);
+  assert.notEqual((await call('individual/circle/people/'+alice.id,{token:bob.token})).status.level,0);
+
+  // Grace period over: status becomes Unknown and the circle is alerted. No incident yet.
+  await welfareCycle(new Date(t0+7*H+120_000));
+  assert.equal((await welfare()).state,'concern');
+  assert.equal((await call('individual/circle/people/'+alice.id,{token:bob.token})).status.level,0);
+  const concern=await latest(bob,'welfare-concern');
+  assert.equal(concern.priority,'emergency');
+  assert.match(concern.body,/Last known location: -1\.28330/);
+  assert.equal((await inbox(eve)).filter(n=>n.kind==='welfare-concern').length,0);
+  const welfareEvents=async()=>(await call('individual/status/history',{token:alice.token})).filter(e=>e.channel==='welfare');
+  assert.deepEqual((await welfareEvents()).map(e=>[e.level,e.active]),[[0,false]]);
+  assert((await call('individual/notifications/unread',{token:bob.token})).urgent>=1);
+
+  // Escalation happens only because it was configured, and only once.
+  await welfareCycle(new Date(t0+8*H));
+  assert.equal((await welfare()).state,'concern');
+  await welfareCycle(new Date(t0+9*H+180_000));
+  await welfareCycle(new Date(t0+9*H+240_000));
+  assert.equal((await welfare()).state,'escalated');
+  assert.deepEqual((await welfareEvents()).map(e=>[e.level,e.active]),[[2,true],[0,false]]);
+
+  // Confirming safety from the dashboard counts as a check-in and tells the circle.
+  await post('individual/status',{requestId:randomUUID(),level:1},{token:alice.token});
+  w=await welfare();
+  assert.equal(w.state,'ok');
+  // Simulated cycle events are dated in the future, so check membership rather than order.
+  assert(['resolved','check-in','escalated','concern','reminder','enabled'].every(kind=>w.events.some(e=>e.kind===kind)));
+  assert(await latest(bob,'welfare-resolved'));
+
+  // The check-in endpoint resets the schedule and records a safe status.
+  w=await post('individual/welfare/check-in',undefined,{token:alice.token});
+  assert(new Date(w.dueAt).getTime()>Date.now()+5*H);
+  assert.equal((await call('individual/status',{token:alice.token})).level,2);
+
+  // Without escalation configured, a concern never becomes an incident; location stays private when not allowed.
+  await call('individual/welfare',{method:'PUT',body:{...plan,shareLocation:false,escalateAfterHours:null},token:alice.token});
+  const t1=Date.now();
+  await welfareCycle(new Date(t1+6*H+60_000));
+  await welfareCycle(new Date(t1+7*H+120_000));
+  await welfareCycle(new Date(t1+40*H));
+  assert.equal((await welfare()).state,'concern');
+  assert.equal((await welfareEvents()).filter(e=>e.level===2).length,1);
+  assert.doesNotMatch((await latest(bob,'welfare-concern')).body,/Last known location/);
+
+  // Turned off: nothing progresses.
+  await call('individual/welfare',{method:'PUT',body:{...plan,enabled:false},token:alice.token});
+  assert.equal(await welfareCycle(new Date(t1+100*H)),0);
+  console.log('Phase 4 welfare checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
   await mongoose.connection.dropDatabase();
