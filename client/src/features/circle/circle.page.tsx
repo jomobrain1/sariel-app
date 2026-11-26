@@ -82,24 +82,60 @@ const ago = (value: string) => {
 const mapLink = (p: { latitude: number; longitude: number }) => `https://www.openstreetmap.org/?mlat=${p.latitude}&mlon=${p.longitude}#map=16/${p.latitude}/${p.longitude}`;
 const coordinates = (p: { latitude: number; longitude: number }) => `${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}`;
 
+type Preset = { key: string; label: string; place?: string; example?: string; required?: boolean; returnDate?: boolean; text: (place: string, back: string) => string };
+const presets: Preset[] = [
+  { key: 'travel', label: 'Travelling', place: 'Where to?', example: 'Moscow, Russia', required: true, returnDate: true,
+    text: (p, back) => `Travelling to ${p}${back ? `, back on ${back}` : ''}` },
+  { key: 'arrived', label: 'Arrived safely', place: 'Where? (optional)', example: 'The hotel in Dubai', text: p => `Arrived safely${p ? ` at ${p}` : ''}` },
+  { key: 'out', label: 'Going out', place: 'Where? (optional)', example: 'Dinner in Westlands', text: p => `Going out${p ? ` to ${p}` : ''}` },
+  { key: 'meeting', label: 'Meeting someone', place: 'Who or where?', example: 'A new employer at Java House', required: true, text: p => `Meeting ${p}` },
+  { key: 'staying', label: 'Staying with', place: 'Who or where?', example: 'My cousin in Kisumu', required: true, text: p => `Staying with ${p}` },
+  { key: 'work', label: 'At work', place: 'Where? (optional)', example: 'The office in Upper Hill', text: p => `At work${p ? ` at ${p}` : ''}` },
+  { key: 'home', label: 'Heading home', text: () => 'Heading home now' },
+  { key: 'unwell', label: 'Not feeling well', text: () => 'Not feeling well, resting today' },
+];
+const longDate = (value: string) => new Date(value + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
+
 function UpdateComposer() {
   const [text, setText] = useState('');
+  const [preset, setPreset] = useState<Preset | null>(null);
+  const [place, setPlace] = useState('');
+  const [back, setBack] = useState('');
+  const [today] = useState(() => new Date().toISOString().slice(0, 10));
   const [post, posting] = circleApi.usePostUpdateMutation();
   const [remove] = circleApi.useDeleteUpdateMutation();
   const mine = circleApi.useMyUpdatesQuery();
   const recent = mine.currentData?.data.slice(0, 3) ?? [];
+  const missing = !!preset?.required && !place.trim();
+  // Picking an option or filling its details rewrites the message; typing in the box takes over from there.
+  function compose(next: Preset | null, nextPlace: string, nextBack: string) {
+    setPreset(next); setPlace(nextPlace); setBack(nextBack);
+    if (next) setText(next.text(nextPlace.trim(), nextBack ? longDate(nextBack) : '').slice(0, 280));
+  }
+  function reset() { setText(''); setPreset(null); setPlace(''); setBack(''); }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!text.trim()) return;
-    try { await post(text.trim()).unwrap(); setText(''); } catch { /* The error message below stays visible. */ }
+    if (!text.trim() || missing) return;
+    try { await post(text.trim()).unwrap(); reset(); } catch { /* The error message below stays visible. */ }
   }
   return <section className="circle-card circle-composer">
     <h2>Share an update</h2>
     <p className="circle-sub">Let your circle know what you’re up to.</p>
+    <div className="circle-presets" role="group" aria-label="Quick updates">
+      {presets.map(p => <button key={p.key} type="button" aria-pressed={preset?.key === p.key}
+        onClick={() => preset?.key === p.key ? reset() : compose(p, '', '')}>{p.label}</button>)}
+    </div>
     <form onSubmit={submit}>
-      <textarea aria-label="Update" maxLength={280} rows={3} placeholder="e.g. Travelling to Nairobi today, back on Friday" value={text} onChange={e => setText(e.target.value)} />
-      <div className="circle-composer-bar"><small>{280 - text.length} characters left</small>
-        <button className="circle-primary" disabled={posting.isLoading || !text.trim()}>{posting.isLoading ? 'Posting…' : 'Post update'}</button></div>
+      {preset?.place && <div className="circle-preset-fields">
+        <label>{preset.place}<input autoFocus maxLength={120} placeholder={preset.example ? `e.g. ${preset.example}` : undefined} value={place}
+          onChange={e => compose(preset, e.target.value, back)} /></label>
+        {preset.returnDate && <label>Back on (optional)<input type="date" value={back} min={today}
+          onChange={e => compose(preset, place, e.target.value)} /></label>}
+      </div>}
+      <textarea aria-label="Update" maxLength={280} rows={3} placeholder="Or write your own, e.g. Travelling to Nairobi today, back on Friday" value={text}
+        onChange={e => { setText(e.target.value); setPreset(null); setPlace(''); setBack(''); }} />
+      <div className="circle-composer-bar"><small>{missing ? `Add ${preset?.place?.replace('?', '').toLowerCase()} to post this update.` : `${280 - text.length} characters left`}</small>
+        <button className="circle-primary" disabled={posting.isLoading || !text.trim() || missing}>{posting.isLoading ? 'Posting…' : 'Post update'}</button></div>
       {posting.isError && <p role="alert" className="circle-error">Couldn’t post your update. Try again.</p>}
     </form>
     {!!recent.length && <ul className="circle-updates">{recent.map(u => <li key={u.id}>
@@ -149,7 +185,7 @@ function CircleFeed() {
     {feed.isError ? <p role="alert">Couldn’t load updates.</p> : !feed.currentData ? <p role="status">Loading…</p> : items.length ? <ul className="circle-list">{items.map(item => <li key={item.id} className="circle-row circle-feed-row">
       <span className="circle-avatar" aria-hidden="true">{initials(item.name)}</span>
       <div className="circle-row-main"><strong>{item.name} <small>· {ago(item.createdAt)}</small></strong><p>{item.text}</p></div>
-    </li>)}</ul> : <div className="circle-empty"><AccountIcon name="activity" /><p>Updates from people who share with you will appear here.</p></div>}
+    </li>)}</ul> : <div className="circle-empty"><AccountIcon name="bell" /><p>Updates from people who share with you will appear here.</p></div>}
   </section>;
 }
 
