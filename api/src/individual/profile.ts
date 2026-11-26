@@ -25,7 +25,7 @@ export default defineRoutes(router=>{
     });
     router.put('/safety-profile',async ctx=>{
       const record=ctx.body as Profile;
-      await profiles().replaceOne({_id:auth.user(ctx).id},{_id:auth.user(ctx).id,...record},{upsert:true});
+      await profiles().replaceOne({_id:auth.user(ctx).id},record,{upsert:true});
       return ctx.response.noContent();
     },{validate:{body:profileInput}});
     router.delete('/safety-profile',async ctx=>{
