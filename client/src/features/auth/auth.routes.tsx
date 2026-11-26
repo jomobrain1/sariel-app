@@ -9,6 +9,7 @@ import { DashboardPage } from '../../pages/dashboard.page'
 import { ProfilePage } from '../../pages/profile.page'
 import { ForbiddenPage } from '../../pages/forbidden.page'
 import { CirclePage } from '../circle/circle.page'
+import { NotificationsPage } from '../notifications/notifications.page'
 
 export const authRoutes: RouteObject[] = [
   { element: <GuestOnly />, children: [{ element: <AuthLayout />, children: [
@@ -21,6 +22,7 @@ export const authRoutes: RouteObject[] = [
     { path: '/dashboard', element: <DashboardPage /> },
     { path: '/profile', element: <ProfilePage /> },
     { path: '/circle', element: <CirclePage /> },
+    { path: '/notifications', element: <NotificationsPage /> },
   ] },
   { path: '/forbidden', element: <ForbiddenPage /> },
 ]

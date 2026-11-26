@@ -4,6 +4,8 @@ import incidents from "./incidents/routes.js";
 import circle from "./circle/members.js";
 import circleUpdates from "./circle/updates.js";
 import circleLocation from "./circle/location.js";
+import notificationRoutes from "./notifications/routes.js";
+import { startWorkers } from "./jobs/worker.js";
 import safetyGateway from "./individual/gateway.js";
 import safetyStatus from "./individual/status.js";
 import safetyIdentity from "./individual/identity.js";
@@ -31,6 +33,7 @@ app.routes(incidents);
 app.routes(circle);
 app.routes(circleUpdates);
 app.routes(circleLocation);
+app.routes(notificationRoutes);
 app.routes(administration);
 app.routes(workforce);
 app.routes(notesRoutes);
@@ -39,5 +42,7 @@ app.routes(auth.adminRoutes);
 app.routes(auth.tenancyRoutes);
 app.routes(adminProductsRoutes);
 app.routes(adminOrdersRoutes);
+
+startWorkers();
 
 export default app;

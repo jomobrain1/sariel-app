@@ -1,0 +1,128 @@
+import { randomUUID } from 'node:crypto';
+import mongoose from 'mongoose';
+import { registerJob } from '../jobs/worker.js';
+import { render, type NotificationKind } from './templates.js';
+
+export type Channel = 'email' | 'sms';
+export interface Notification {
+  _id:string; recipient:string; kind:NotificationKind; title:string; body:string; link:string;
+  priority:'normal'|'emergency'; dedupeKey?:string; createdAt:Date; readAt:Date|null; acknowledgedAt:Date|null;
+}
+export interface Delivery {
+  _id:string; notification:string; recipient:string; channel:Channel; target:string; subject:string; text:string;
+  state:'queued'|'sending'|'sent'|'failed'|'skipped'; attempts:number; nextAttemptAt:Date; lockedUntil:Date|null;
+  lastError:string|null; sentAt:Date|null; history:{at:Date; outcome:'sent'|'failed'|'skipped'; error?:string}[];
+}
+export interface Preferences { _id:string; email:boolean; sms:boolean }
+
+export const notifications = () => mongoose.connection.collection<Notification>('sariel_notifications');
+export const deliveries = () => mongoose.connection.collection<Delivery>('sariel_notification_deliveries');
+export const preferences = () => mongoose.connection.collection<Preferences>('sariel_notification_preferences');
+export const defaultPreferences = {email:true, sms:false};
+
+export const MAX_ATTEMPTS = 5;
+const BACKOFF_MINUTES = [1, 5, 15, 60];
+const LEASE_MS = 60_000;
+
+let indexed: Promise<unknown> | undefined;
+export function ensureNotificationIndexes() {
+  indexed ??= Promise.all([
+    notifications().createIndex({recipient:1, createdAt:-1}),
+    notifications().createIndex({recipient:1, readAt:1}),
+    notifications().createIndex({recipient:1, dedupeKey:1}, {unique:true, partialFilterExpression:{dedupeKey:{$type:'string'}}}),
+    deliveries().createIndex({state:1, nextAttemptAt:1}),
+    deliveries().createIndex({notification:1}),
+  ]).catch(error => { indexed = undefined; throw error; });
+  return indexed;
+}
+
+async function contacts(recipient:string) {
+  const [user, account] = await Promise.all([
+    /^[a-f0-9]{24}$/.test(recipient) ? mongoose.connection.collection('users').findOne(
+      {_id:new mongoose.Types.ObjectId(recipient), deletedAt:null, suspendedAt:null}, {projection:{email:1}}) : null,
+    mongoose.connection.collection<{_id:string; phone?:string}>('sariel_individuals').findOne({_id:recipient}, {projection:{phone:1}}),
+  ]);
+  return {email:user?.email as string | undefined, phone:account?.phone, active:!!user};
+}
+
+/**
+ * Stores an in-app notification and queues email/SMS deliveries the recipient allows.
+ * A dedupe key makes repeated calls for the same event a no-op.
+ */
+export async function notify(recipient:string, kind:NotificationKind, data:Record<string, string> = {}, dedupeKey?:string) {
+  await ensureNotificationIndexes();
+  const message = render(kind, data);
+  const now = new Date();
+  const note:Notification = {_id:randomUUID(), recipient, kind, title:message.title, body:message.body, link:message.link,
+    priority:message.priority, ...(dedupeKey ? {dedupeKey} : {}), createdAt:now, readAt:null, acknowledgedAt:null};
+  try { await notifications().insertOne(note); }
+  catch (error) {
+    if (error instanceof mongoose.mongo.MongoServerError && error.code === 11000) return null;
+    throw error;
+  }
+  if (message.external.length) {
+    const [prefs, reach] = await Promise.all([preferences().findOne({_id:recipient}), contacts(recipient)]);
+    const allowed = {...defaultPreferences, ...prefs};
+    const queue:Delivery[] = [];
+    for (const channel of message.external) {
+      const target = channel === 'email' ? reach.email : reach.phone;
+      // Emergency alerts use every channel the person has set up; routine ones follow preferences.
+      if (!reach.active || !target || (message.priority !== 'emergency' && !allowed[channel])) continue;
+      queue.push({_id:randomUUID(), notification:note._id, recipient, channel, target, subject:message.subject, text:message.text,
+        state:'queued', attempts:0, nextAttemptAt:now, lockedUntil:null, lastError:null, sentAt:null, history:[]});
+    }
+    if (queue.length) await deliveries().insertMany(queue);
+  }
+  return note;
+}
+
+// ── Providers ───────────────────────────────────────────────
+// Email and SMS go to one delivery webhook (NOTIFICATION_DELIVERY_URL), the same pattern as
+// account verification. Any email/SMS service can sit behind it. Without it, deliveries are skipped.
+type Outcome = {ok:true} | {ok:false; retry:boolean; error:string};
+async function sendThroughProvider(delivery:Delivery): Promise<Outcome> {
+  const endpoint = process.env.NOTIFICATION_DELIVERY_URL;
+  const key = process.env.NOTIFICATION_DELIVERY_TOKEN;
+  let url: URL | undefined;
+  try { url = endpoint ? new URL(endpoint) : undefined; } catch { url = undefined; }
+  const local = url && (url.hostname === '127.0.0.1' || url.hostname === 'localhost');
+  if (!url || !key || (url.protocol !== 'https:' && !(local && url.protocol === 'http:')))
+    return {ok:false, retry:false, error:'Delivery provider not configured.'};
+  try {
+    const response = await fetch(url, {method:'POST', redirect:'error', signal:AbortSignal.timeout(10_000),
+      headers:{'Content-Type':'application/json', Authorization:'Bearer ' + key, 'Idempotency-Key':delivery._id},
+      body:JSON.stringify({channel:delivery.channel, target:delivery.target, subject:delivery.subject, text:delivery.text})});
+    if (response.ok) return {ok:true};
+    return {ok:false, retry:response.status >= 500 || response.status === 429, error:`Provider responded ${response.status}.`};
+  } catch (error) {
+    return {ok:false, retry:true, error:error instanceof Error ? error.message : 'Delivery failed.'};
+  }
+}
+
+/** Sends due deliveries. Safe to run on several instances at once: each delivery is claimed with a lease. */
+export async function deliveryCycle(now = new Date(), limit = 25) {
+  await ensureNotificationIndexes();
+  let processed = 0;
+  for (; processed < limit; processed++) {
+    const claimed = await deliveries().findOneAndUpdate(
+      {nextAttemptAt:{$lte:now}, $or:[{state:'queued'}, {state:'sending', lockedUntil:{$lt:now}}]},
+      {$set:{state:'sending', lockedUntil:new Date(now.getTime() + LEASE_MS)}, $inc:{attempts:1}},
+      {sort:{nextAttemptAt:1}, returnDocument:'after'});
+    if (!claimed) break;
+    const outcome = await sendThroughProvider(claimed);
+    const at = new Date();
+    if (outcome.ok) {
+      await deliveries().updateOne({_id:claimed._id}, {$set:{state:'sent', sentAt:at, lockedUntil:null, lastError:null}, $push:{history:{at, outcome:'sent'}}});
+    } else if (!outcome.retry) {
+      await deliveries().updateOne({_id:claimed._id}, {$set:{state:'skipped', lockedUntil:null, lastError:outcome.error}, $push:{history:{at, outcome:'skipped', error:outcome.error}}});
+    } else {
+      const done = claimed.attempts >= MAX_ATTEMPTS;
+      const wait = BACKOFF_MINUTES[Math.min(claimed.attempts - 1, BACKOFF_MINUTES.length - 1)] * 60_000;
+      await deliveries().updateOne({_id:claimed._id}, {$set:{state:done ? 'failed' : 'queued', lockedUntil:null, lastError:outcome.error,
+        nextAttemptAt:new Date(now.getTime() + wait)}, $push:{history:{at, outcome:'failed', error:outcome.error}}});
+    }
+  }
+  return processed;
+}
+
+registerJob('notification-delivery', 15_000, now => deliveryCycle(now));
