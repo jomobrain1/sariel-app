@@ -1,6 +1,7 @@
 import { recordUserDeletion } from './administration/trash-attribution.js';
 import incidentLink from "./individual/incident-link.js";
 import incidents from "./incidents/routes.js";
+import circle from "./circle/members.js";
 import safetyGateway from "./individual/gateway.js";
 import safetyStatus from "./individual/status.js";
 import safetyIdentity from "./individual/identity.js";
@@ -25,6 +26,7 @@ app.routes(safetyStatus);
 app.routes(safetyGateway);
 app.routes(incidentLink);
 app.routes(incidents);
+app.routes(circle);
 app.routes(administration);
 app.routes(workforce);
 app.routes(notesRoutes);

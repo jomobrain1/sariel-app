@@ -42,18 +42,20 @@ export async function recordStatus(owner:string,report:Report,channel:StatusEven
   }
   return {reference:key,level:report.level,status:levels[report.level]};
 }
+// An unresolved report outranks every routine update, including UNKNOWN.
+// Pass channels to limit which reports count, e.g. to keep discreet link reports out of circle views.
+export async function currentStatus(owner:string,channels?:StatusEvent['channel'][]){
+  const filter={owner,...(channels?{channel:{$in:channels}}:{})};
+  const highest=await events().find({...filter,active:true}).sort({level:-1,createdAt:-1,_id:-1}).limit(1).next();
+  const latest=highest??await events().find(filter).sort({createdAt:-1,_id:-1}).limit(1).next();
+  const level=latest && (latest.active || latest.level<2)?latest.level:0;
+  return {level,status:levels[level],reportedAt:latest?.createdAt??null};
+}
 export default defineRoutes(router=>{
   router.group({prefix:'/api/individual',middleware:individual},()=>{
     router.post('/status',async ctx=>ctx.response.success(await recordStatus(auth.user(ctx).id,ctx.body as Report,'account')),
       {validate:{body:update}});
-    router.get('/status',async ctx=>{
-      const owner=auth.user(ctx).id;
-      // An unresolved report outranks every routine update, including UNKNOWN.
-      const highest=await events().find({owner,active:true}).sort({level:-1,createdAt:-1,_id:-1}).limit(1).next();
-      const latest=highest??await events().find({owner}).sort({createdAt:-1,_id:-1}).limit(1).next();
-      const level=latest && (latest.active || latest.level<2)?latest.level:0;
-      return ctx.response.success({level,status:levels[level],reportedAt:latest?.createdAt??null});
-    });
+    router.get('/status',async ctx=>ctx.response.success(await currentStatus(auth.user(ctx).id)));
     router.get('/status/history',async ctx=>{
       const history=await events().find({owner:auth.user(ctx).id},{projection:{_id:1,level:1,active:1,channel:1,createdAt:1}})
         .sort({createdAt:-1,_id:-1}).limit(100).toArray();
