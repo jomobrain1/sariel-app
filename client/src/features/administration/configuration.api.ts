@@ -4,7 +4,7 @@ export type RecordData = {revision:number; value:Value};
 export interface PlatformIncident {
   version?:number;
   signals:{action:string;at:string;actorName?:string}[];
-  reference:string; category:string; level:number; createdAt:string; channel:'account'|'gateway';
+  reference:string; category:string; level:number; createdAt:string; channel:'account'|'gateway'|'welfare';
   state:'pending'|'assigned'|'acknowledged'|'resolved'; organization:string|null;
   account:{name:string;email:string}|null;
 }

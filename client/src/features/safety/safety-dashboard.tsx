@@ -2,6 +2,9 @@ import { useRef, useState, type FormEvent } from 'react';
 import { AccountIcon } from '../../components/account-icon';
 import { labels, safetyApi, type Update } from './safety.api';
 import './safety-dashboard.css';
+import { useAppDispatch } from '../../app/hooks';
+import { WelfareCard } from '../welfare/welfare-card';
+import { welfareApi } from '../welfare/welfare.api';
 
 const levels = [2, 3, 4, 5];
 const categories = ['welfare', 'medical', 'harassment', 'labour exploitation'];
@@ -48,6 +51,7 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
   const status = safetyApi.useSafetyStatusQuery(accountId,{refetchOnMountOrArgChange:true});
   const history = safetyApi.useSafetyHistoryQuery(accountId,{refetchOnMountOrArgChange:true});
   const [send] = safetyApi.useSubmitSafetyUpdateMutation();
+  const dispatch = useAppDispatch();
   const [level,setLevel] = useState<number>();
   const [category,setCategory] = useState('welfare');
   const [country,setCountry] = useState('');
@@ -77,6 +81,8 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
         setLevel(undefined); setCountry(''); setCategory('welfare');
       }
       void status.refetch(); void history.refetch();
+      // A safe check-in also resets scheduled welfare check-ins.
+      if (value.level === 1) dispatch(welfareApi.util.invalidateTags(['Welfare']));
     } catch {
       setMessage('Submission unconfirmed. Check your connection and retry with the same details.');
     } finally { pending.current = false; setBusy(false); }
@@ -112,6 +118,7 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
           <button disabled={busy} onClick={()=>void submit({level:1,category:'welfare'})}>Confirm I’m safe</button>
           {current && current.level>=2 && <small>Checking in keeps your active incident open.</small>}
         </section>
+        <WelfareCard/>
         <IncidentLink/>
       </div>
     </div>
