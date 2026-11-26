@@ -125,3 +125,14 @@
 .circle-preset-fields label {display:grid;gap:6px;font-weight:700;font-size:.9rem}
 .circle-preset-fields input {min-height:44px;padding:0 12px;border:1px solid #c9d3cf;border-radius:8px;font:inherit;font-weight:500;color:inherit;background:#fff;min-width:0}
 @media(max-width:520px){.circle-preset-fields{grid-template-columns:1fr}}
+
+/* Tabs */
+.circle-tabs {display:flex;gap:4px;margin:0 0 24px;border-bottom:1px solid #dfe5e2}
+.circle-tabs button {position:relative;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border:0;background:none;color:#5b6b66;font-weight:700;font-size:1rem}
+.circle-tabs button[aria-selected=true] {color:#0f4d3f}
+.circle-tabs button[aria-selected=true]::after {content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:#0f4d3f}
+.circle-count {min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:999px;background:#0f4d3f;color:#fff;font-size:.75rem;line-height:20px;text-align:center}
+.circle-empty .circle-ghost {margin-top:6px}
+.circle-location .circle-trail {margin:0 0 14px}
+.circle-location .circle-trail .circle-hint {margin:8px 0 0}
+.circle-trail li span {color:#5b6b66}

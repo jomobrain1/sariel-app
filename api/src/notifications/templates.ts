@@ -18,7 +18,7 @@ export function render(kind:NotificationKind, data:Record<string, string>): Rend
   const name = data.name ?? 'Someone';
   switch (kind) {
     case 'circle-invite': return {title:`${name} invited you to their circle`, body:'Accept to see what they share with you.',
-      link:'/circle', priority:'normal', external:['email'], subject:'New Sariel invitation', text:discreet};
+      link:'/circle?tab=invites', priority:'normal', external:['email'], subject:'New Sariel invitation', text:discreet};
     case 'circle-accepted': return {title:`${name} joined your circle`, body:'They can now see what you chose to share.',
       link:'/circle', priority:'normal', external:['email'], subject:'Sariel circle update', text:discreet};
     case 'check-in-request': return {title:`${name} asked you to check in`, body:'Let them know you’re OK.',

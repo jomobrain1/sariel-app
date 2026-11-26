@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate } from 'react-router';
+import { Navigate, useSearchParams } from 'react-router';
 import { Modal } from '@tilcayo/ui';
 import { useAuth } from '../../app/auth';
 import { AccountIcon } from '../../components/account-icon';
 import { labels } from '../safety/safety.api';
-import { circleApi, permissionLabels, relationships, type CircleMember, type Permissions, type Relationship } from './circle.api';
+import { circleApi, permissionLabels, relationships, type CircleMember, type CircleOverview, type Permissions, type Relationship } from './circle.api';
 import './circle.css';
 
 const date = (value: string) => new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -46,7 +46,7 @@ function InviteForm({ done }: { done: () => void }) {
     <label>Email address<input name="email" type="email" required maxLength={254} autoComplete="off" placeholder="name@example.com" /></label>
     <label>Relationship<select name="relationship" defaultValue="family">{relationships.map(r => <option key={r} value={r}>{capital(r)}</option>)}</select></label>
     <fieldset><legend>What they can see</legend><PermissionPicker value={permissions} onChange={setPermissions} /></fieldset>
-    <p className="circle-hint">They’ll see your invite when they sign in with this address. You can change or remove access at any time.</p>
+    <p className="circle-hint">No email is sent or needed. The invite appears in their Invites tab when they sign in to Sariel with this address. You can change or remove access at any time.</p>
     {error && <p role="alert" className="circle-error">{error}</p>}
     <button className="circle-primary" disabled={state.isLoading}>{state.isLoading ? 'Sending…' : 'Send invite'}</button>
   </form>;
@@ -172,6 +172,11 @@ function LocationCard() {
       <div><dt>Accuracy</dt><dd>{latest ? `±${Math.round(latest.accuracy)} m` : '—'}</dd></div>
       <div><dt>Kept for</dt><dd>{config?.retentionDays ?? 30} days</dd></div>
     </dl>
+    {!!history.currentData?.data.length && <details className="circle-trail" open={config?.sharing}>
+      <summary>Your recent locations ({history.currentData.data.length})</summary>
+      <p className="circle-hint">This is what people with location access see.</p>
+      <ol>{history.currentData.data.slice(0, 12).map(p => <li key={p.recordedAt}><a href={mapLink(p)} target="_blank" rel="noreferrer">{coordinates(p)}</a><span>±{Math.round(p.accuracy)} m · {ago(p.recordedAt)}</span></li>)}</ol>
+    </details>}
     <p className="circle-hint">Only people you allow can see your location.{' '}
       {!!history.currentData?.data.length && <button type="button" className="circle-link" disabled={clearing.isLoading} onClick={() => { if (confirm('Delete your whole location history?')) void clear(); }}>Delete my history</button>}</p>
   </section>;
@@ -239,10 +244,42 @@ function PersonDetail({ owner, entry, close }: { owner: string; entry: string; c
   </div>;
 }
 
+function InvitesTab({ data, invite }: { data: CircleOverview | undefined; invite: () => void }) {
+  const [respond, responding] = circleApi.useRespondMutation();
+  const [cancel, cancelling] = circleApi.useRemoveMemberMutation();
+  const sent = data?.members.filter(m => m.state === 'pending') ?? [];
+  return <div className="circle-grid">
+    <section className="circle-card">
+      <h2>Received</h2>
+      <p className="circle-sub">People who want you in their circle.</p>
+      {!data ? <p role="status">Loading…</p> : data.invitations.length ? <ul className="circle-list">{data.invitations.map(item => <li key={item.id} className="circle-row">
+        <span className="circle-avatar" aria-hidden="true">{initials(item.name)}</span>
+        <div className="circle-row-main"><strong>{item.name}</strong><small>Invited you {date(item.createdAt)} · you’ll see:</small><Chips permissions={item.permissions} /></div>
+        <div className="circle-row-actions">
+          <button className="circle-primary" disabled={responding.isLoading} onClick={() => void respond({ id: item.id, answer: 'accept' })}>Accept</button>
+          <button className="circle-ghost" disabled={responding.isLoading} onClick={() => void respond({ id: item.id, answer: 'reject' })}>Decline</button>
+        </div>
+      </li>)}</ul> : <div className="circle-empty"><AccountIcon name="shield" /><p>No invites right now. When someone invites you, it appears here.</p></div>}
+    </section>
+    <section className="circle-card">
+      <h2>Sent</h2>
+      <p className="circle-sub">Waiting for them to accept.</p>
+      {!data ? <p role="status">Loading…</p> : sent.length ? <ul className="circle-list">{sent.map(m => <li key={m.id} className="circle-row">
+        <span className="circle-avatar" aria-hidden="true">{initials(m.email)}</span>
+        <div className="circle-row-main"><strong>{m.email}</strong><small>{capital(m.relationship)} · sent {date(m.createdAt)}</small><Chips permissions={m.permissions} /></div>
+        <div className="circle-row-actions">
+          <button className="circle-ghost is-danger" disabled={cancelling.isLoading} onClick={() => void cancel(m.id)}>Cancel</button>
+        </div>
+      </li>)}</ul> : <div className="circle-empty"><AccountIcon name="user" /><p>No pending invites.</p><button className="circle-ghost" onClick={invite}>Invite someone</button></div>}
+    </section>
+  </div>;
+}
+
 export function CirclePage() {
   const { user } = useAuth();
   const overview = circleApi.useCircleQuery(undefined, { pollingInterval: 60_000, skip: !user || !!user.tenant });
-  const [respond, responding] = circleApi.useRespondMutation();
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') === 'invites' ? 'invites' : 'circle';
   const [answer, answering] = circleApi.useAnswerCheckInsMutation();
   const [inviting, setInviting] = useState(false);
   const [viewing, setViewing] = useState<{ owner: string; entry: string; name: string } | null>(null);
@@ -264,17 +301,15 @@ export function CirclePage() {
       <button className="circle-primary" disabled={answering.isLoading} onClick={() => void answer().unwrap().then(() => setNotice('Check-in sent. Your circle can see you’re OK.'))}>I’m OK</button>
     </div>}
 
-    {!!data?.invitations.length && <section className="circle-card">
-      <h2>Invitations</h2>
-      <ul className="circle-list">{data.invitations.map(invite => <li key={invite.id} className="circle-row">
-        <span className="circle-avatar" aria-hidden="true">{initials(invite.name)}</span>
-        <div className="circle-row-main"><strong>{invite.name} invited you to their circle</strong><small>You’ll be able to see:</small><Chips permissions={invite.permissions} /></div>
-        <div className="circle-row-actions">
-          <button className="circle-primary" disabled={responding.isLoading} onClick={() => void respond({ id: invite.id, answer: 'accept' })}>Accept</button>
-          <button className="circle-ghost" disabled={responding.isLoading} onClick={() => void respond({ id: invite.id, answer: 'reject' })}>Decline</button>
-        </div>
-      </li>)}</ul>
-    </section>}
+    <div className="circle-tabs" role="tablist" aria-label="Circle sections">
+      <button role="tab" aria-selected={tab === 'circle'} onClick={() => setParams({}, { replace: true })}>My circle</button>
+      <button role="tab" aria-selected={tab === 'invites'} onClick={() => setParams({ tab: 'invites' }, { replace: true })}>
+        Invites{!!data?.invitations.length && <span className="circle-count">{data.invitations.length}</span>}</button>
+    </div>
+
+    {tab === 'invites' ? <InvitesTab data={data} invite={() => { setNotice(''); setInviting(true); }} /> : <>
+    {!!data?.invitations.length && <p className="circle-notice">You have {data.invitations.length === 1 ? 'a new invite' : `${data.invitations.length} new invites`}.{' '}
+      <button className="circle-link" onClick={() => setParams({ tab: 'invites' }, { replace: true })}>View invites</button></p>}
 
     <div className="circle-grid">
       <UpdateComposer />
@@ -302,9 +337,10 @@ export function CirclePage() {
     </div>
 
     <CircleFeed />
+    </>}
 
     <Modal open={inviting} title="Invite to your circle" onClose={() => setInviting(false)}>
-      {inviting && <InviteForm done={() => { setInviting(false); setNotice('Invite sent.'); }} />}
+      {inviting && <InviteForm done={() => { setInviting(false); setNotice('Invite sent. They’ll find it in their Invites tab when they sign in.'); setParams({ tab: 'invites' }, { replace: true }); }} />}
     </Modal>
     <Modal open={!!viewing} title={viewing?.name ?? 'Circle'} onClose={() => setViewing(null)}>
       {viewing && <PersonDetail owner={viewing.owner} entry={viewing.entry} close={() => setViewing(null)} />}
