@@ -1,3 +1,4 @@
+import safetyStatus from "./individual/status.js";
 import safetyIdentity from "./individual/identity.js";
 import safetyProfiles from "./individual/profile.js";
 import individualAccount from "./individual/account.js";
@@ -16,6 +17,7 @@ app.routes(healthRoutes);
 app.routes(individualAccount);
 app.routes(safetyProfiles);
 app.routes(safetyIdentity);
+app.routes(safetyStatus);
 app.routes(administration);
 app.routes(workforce);
 app.routes(notesRoutes);
