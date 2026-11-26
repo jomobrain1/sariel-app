@@ -1,14 +1,7 @@
 import { useState } from 'react';
-import { tilcayoApi } from '../../app/api';
+import { configApi, type Value, type RecordData } from './configuration.api';
 import { actionError } from '../admin/action-error';
 
-type Value = Record<string, unknown>;
-type RecordData = {revision:number; value:Value};
-export const configApi = tilcayoApi.injectEndpoints({endpoints: b => ({
-  configuration:b.query<{data:RecordData|null},string>({query:path => '/sariel/'+path}),
-  saveConfiguration:b.mutation<unknown,{path:string;body:RecordData}>({query:({path,body}) => ({url:'/sariel/'+path,method:'PUT',body})}),
-  audit:b.query<{data:{action:string;actorId:string;createdAt:string}[]},void>({query:() => '/sariel/admin/audit'}),
-})});
 export function Configuration({path,title,initial,choices={}}:{path:string;title:string;initial:Value;choices?:Record<string,string[]>}) {
   const result = configApi.useConfigurationQuery(path);
   if (result.isError) return <p role="alert">Unable to load {title}.</p>;

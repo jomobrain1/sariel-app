@@ -1,3 +1,4 @@
+import { StaffPanel } from '../features/administration/workforce';
 import { Link } from 'react-router'
 import { useAuth } from '../app/auth'
 import { AccountIcon } from '../components/account-icon'
@@ -15,6 +16,7 @@ export function DashboardPage() {
       <section className="account-card user-summary-card"><span className="account-icon-tile"><AccountIcon name="calendar" /></span><div><p>Member since</p><h2>{joined}</h2></div></section>
       <section className="account-card user-summary-card"><span className="account-icon-tile"><AccountIcon name="shield" /></span><div><p>Current session</p><h2><span className="user-session-dot" /> Signed in</h2></div></section>
     </div>
+    <StaffPanel />
     <div className="user-dashboard-grid">
       <div className="account-column">
         <section className="account-card user-workspace"><div className="user-card-heading"><h2>Your workspace</h2><p>Pick up where you left off.</p></div>
