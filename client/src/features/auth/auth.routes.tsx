@@ -8,6 +8,7 @@ import { ForgotPasswordPage } from '../../pages/forgot-password.page'
 import { DashboardPage } from '../../pages/dashboard.page'
 import { ProfilePage } from '../../pages/profile.page'
 import { ForbiddenPage } from '../../pages/forbidden.page'
+import { CirclePage } from '../circle/circle.page'
 
 export const authRoutes: RouteObject[] = [
   { element: <GuestOnly />, children: [{ element: <AuthLayout />, children: [
@@ -19,6 +20,7 @@ export const authRoutes: RouteObject[] = [
     { path: '/staff/invitation', element: <InvitationPage /> },
     { path: '/dashboard', element: <DashboardPage /> },
     { path: '/profile', element: <ProfilePage /> },
+    { path: '/circle', element: <CirclePage /> },
   ] },
   { path: '/forbidden', element: <ForbiddenPage /> },
 ]

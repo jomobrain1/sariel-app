@@ -7,7 +7,8 @@ import { AccountMenu } from './account-menu'
 
 
 export function Navigation() {
-  const { initialized, isAuthenticated } = useAuth()
+  const { initialized, isAuthenticated, user } = useAuth()
+  const individual = isAuthenticated && !!user && !user.tenant && user.platformRole !== 'superadmin'
   const [isOpen, setIsOpen] = useState(false)
   const toggleRef = useRef<HTMLButtonElement>(null)
   const close = () => setIsOpen(false)
@@ -29,6 +30,7 @@ export function Navigation() {
     <div id="starter-navigation-links" className={`starter-nav-panel${isOpen ? ' is-open' : ''}`}>
       <div className="starter-nav-links">
         <NavLink to="/" end onClick={close}>Home</NavLink>
+        {individual && <NavLink to="/circle" onClick={close}>Circle</NavLink>}
         <NavLink to="/elements" onClick={close}>Elements</NavLink>
         <NavLink to="/about" onClick={close}>About</NavLink>
       </div>
