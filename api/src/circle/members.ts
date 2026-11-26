@@ -21,7 +21,7 @@ const checkIns = () => mongoose.connection.collection<CheckInRequest>('sariel_ci
 const users = () => mongoose.connection.collection<{_id:mongoose.Types.ObjectId;name:string;email:string;deletedAt:Date|null;suspendedAt:Date|null}>('users');
 const MAX_MEMBERS = 50;
 const notFound = () => createHttpError(404, 'NOT_FOUND', 'Circle entry unavailable.');
-const objectId = z.string().regex(/^[a-f0-9]{24}$/);
+export const objectId = z.string().regex(/^[a-f0-9]{24}$/);
 
 let indexed: Promise<unknown> | undefined;
 function ensureIndexes() {
@@ -57,10 +57,11 @@ export async function names(ids:string[]) {
 type CircleEvent =
   | {kind:'invited'; entry:Member; ownerName:string}
   | {kind:'accepted'; entry:Member; memberName:string}
-  | {kind:'check-in-requested'; owner:string; requester:string; requesterName:string};
+  | {kind:'check-in-requested'; owner:string; requester:string; requesterName:string}
+  | {kind:'update-posted'; owner:string; ownerName:string; update:string; text:string};
 const listeners: ((event:CircleEvent) => Promise<void>)[] = [];
 export function onCircleEvent(listener:(event:CircleEvent) => Promise<void>) { listeners.push(listener); }
-async function emit(event:CircleEvent) {
+export async function emit(event:CircleEvent) {
   await Promise.all(listeners.map(listener => listener(event).catch(() => undefined)));
 }
 
