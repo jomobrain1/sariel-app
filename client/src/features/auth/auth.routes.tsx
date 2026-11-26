@@ -1,3 +1,4 @@
+import { InvitationPage } from '../administration/workforce';
 import type { RouteObject } from 'react-router'
 import { AuthLayout } from '../../layouts/auth-layout'
 import { RequireAuth, GuestOnly } from '../../middleware/auth'
@@ -15,6 +16,7 @@ export const authRoutes: RouteObject[] = [
     { path: '/forgot-password', element: <ForgotPasswordPage /> },
   ] }] },
   { element: <RequireAuth />, children: [
+    { path: '/staff/invitation', element: <InvitationPage /> },
     { path: '/dashboard', element: <DashboardPage /> },
     { path: '/profile', element: <ProfilePage /> },
   ] },

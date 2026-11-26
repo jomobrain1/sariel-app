@@ -1,3 +1,4 @@
+import { PlatformLayout } from '../administration/platform-layout';
 import { WorkspaceGate, WorkspaceIdentity } from '../tenancy/workspace-switcher';
 import { AdminLayout } from '@tilcayo/admin';
 import { useAuth } from '../../app/auth';
@@ -8,6 +9,7 @@ export function ManagementLayout() {
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
   const { can } = useAdminAccess();
+  if (user?.platformRole === 'superadmin' && !user.tenant) return <PlatformLayout />;
   const sections = pathname === '/admin' || pathname === '/admin/' || pathname === '/admin/dashboard'
     ? [{ id: 'summary', label: 'Summary', tab: 'overview' }, { id: 'users', label: 'Users', tab: 'users' }, { id: 'inventory', label: 'Inventory', tab: 'inventory' }]
     : pathname === '/admin/products'

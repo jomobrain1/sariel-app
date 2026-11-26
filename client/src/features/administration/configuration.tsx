@@ -1,14 +1,7 @@
 import { useState } from 'react';
-import { tilcayoApi } from '../../app/api';
+import { configApi, type Value, type RecordData } from './configuration.api';
 import { actionError } from '../admin/action-error';
 
-type Value = Record<string, unknown>;
-type RecordData = {revision:number; value:Value};
-export const configApi = tilcayoApi.injectEndpoints({endpoints: b => ({
-  configuration:b.query<{data:RecordData|null},string>({query:path => '/sariel/'+path}),
-  saveConfiguration:b.mutation<unknown,{path:string;body:RecordData}>({query:({path,body}) => ({url:'/sariel/'+path,method:'PUT',body})}),
-  audit:b.query<{data:{action:string;actorId:string;createdAt:string}[]},void>({query:() => '/sariel/admin/audit'}),
-})});
 export function Configuration({path,title,initial,choices={}}:{path:string;title:string;initial:Value;choices?:Record<string,string[]>}) {
   const result = configApi.useConfigurationQuery(path);
   if (result.isError) return <p role="alert">Unable to load {title}.</p>;
@@ -33,9 +26,16 @@ function Editor({path,title,record,choices,reload}:{path:string;title:string;rec
   })}{error&&<p role="alert">{error}</p>}<button className="tl-btn tl-btn-primary" disabled={state.isLoading}>Save {title.toLowerCase()}</button><small>Saved revision {record.revision}</small></form>;
 }
 export function PlatformSettings(){
-  const audit=configApi.useAuditQuery();
-  return <><Configuration path="admin/platform" title="Platform settings" initial={{platformName:'SARIEL',supportEmail:'support@example.test',defaultLanguage:'English'}}/>
-    <details><summary>Recent administration activity</summary><button onClick={()=>audit.refetch()}>Refresh activity</button>{audit.isError&&<p>Unable to load activity.</p>}<ol>{audit.data?.data.map((e,i)=><li key={i}>{new Date(e.createdAt).toLocaleString()} · {e.action} · {e.actorId}</li>)}</ol></details></>;
+  return <Configuration path="admin/platform" title="Platform settings" initial={{platformName:'SARIEL',supportEmail:'support@example.test',defaultLanguage:'English'}}/>;
+}
+export function AuditPage(){
+  const audit = configApi.useAuditQuery();
+  return <section className="sariel-audit"><header><h1>Audit log</h1><button className="tl-btn tl-btn-outline" onClick={() => audit.refetch()}>Refresh</button></header>
+    {audit.isError ? <p role="alert">Unable to load activity.</p> : audit.isLoading ? <p>Loading activity…</p> : audit.data?.data.length ?
+      <table><thead><tr><th>Time</th><th>Action</th><th>Actor ID</th></tr></thead><tbody>
+        {audit.data.data.map((entry,i) => <tr key={i}><td>{new Date(entry.createdAt).toLocaleString()}</td><td>{entry.action}</td><td>{entry.actorId}</td></tr>)}
+      </tbody></table> : <p>No activity recorded yet.</p>}
+  </section>;
 }
 export function OrganizationSettings({id}:{id:string}){
   return <Configuration path={'admin/organization/'+id} title="Organization scope" initial={{category:'Government',verification:'pending',countries:['KE'],jurisdictions:['Kenya'],incidentCategories:['welfare'],capabilities:['welfare'],officialEmail:'',officialPhone:'',operatingHours:'',timeZone:'Africa/Nairobi',available:false,preferredLanguage:'English'}} choices={{category:['Government','Diplomatic mission','Law enforcement','Labour regulator','Humanitarian','GBV support','Legal aid'],verification:['pending','verified','rejected']}}/>;

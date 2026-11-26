@@ -10,7 +10,7 @@ import { useGetAdminOrdersQuery, useRestoreAdminOrderMutation } from './orders.a
 
 export function TrashPage() {
   const { can } = useAdminAccess();
-  const kinds = [{ key: 'tenants', label: 'Tenants', enabled: can('tenants') }, { key: 'users', label: 'Users', enabled: can('users') }, { key: 'products', label: 'Products', enabled: can('catalog') }, { key: 'orders', label: 'Orders', enabled: can('orders') }].filter(kind => kind.enabled);
+  const kinds = [{ key: 'tenants', label: 'Organizations', enabled: can('tenants') }, { key: 'users', label: 'Users', enabled: can('users') }, { key: 'products', label: 'Products', enabled: !can('tenants') && can('catalog') }, { key: 'orders', label: 'Orders', enabled: !can('tenants') && can('orders') }].filter(kind => kind.enabled);
   const [kind, setKind] = useState(kinds[0]?.key ?? '');
   const [page, setPage] = useState(1);
   const [error, setError] = useState('');
