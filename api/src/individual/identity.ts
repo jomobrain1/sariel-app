@@ -32,7 +32,7 @@ export default defineRoutes(router=>{
       const codes=Array.from({length:6},(_,level)=>({level,secret:token()}));
       await identities().createIndex({selector:1},{unique:true});
       await identities().replaceOne({_id:auth.user(ctx).id},{selector,codes:codes.map(c=>({level:c.level,digest:hash(c.secret)}))},{upsert:true});
-      return ctx.response.created({selector,codes});
+      return ctx.response.created({selector,codes,reportUrl:'/safety/index.html#'+selector});
     });
     router.delete('/safety-identity',async ctx=>{
       await identities().deleteOne({_id:auth.user(ctx).id});
