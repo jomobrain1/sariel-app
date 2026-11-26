@@ -176,6 +176,17 @@ try {
   assert.equal(after.reference,newest.reference);
   assert.deepEqual(after.signals.map(s=>s.action),['gallery-mountain','acknowledge','dispatch']);
   assert(after.signals[2].actorName);
+  // Links never expire: once the incident is resolved, reopening the link starts a new incident.
+  const reopened=(await call('individual/status/history',{token})).length;
+  await activate('/jomo1',204);
+  assert.equal((await call('individual/status/history',{token})).length,reopened);
+  await mongoose.connection.collection('sariel_safety_events').updateOne({_id:newest.reference},{$set:{active:false,'incident.state':'resolved'}});
+  const fresh=await post('auth/safety/activate',{...galleryToken,gallery:true});
+  assert.notEqual(fresh.edition,edition);
+  assert.equal((await call('individual/status/history',{token})).length,reopened+1);
+  await activate('/jomo1',204);
+  assert.equal((await call('individual/status/history',{token})).length,reopened+1);
+  assert.deepEqual(await cover(),{edition:fresh.edition,cover:'valley'});
   console.log('Phase 3 HTTP integration checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
