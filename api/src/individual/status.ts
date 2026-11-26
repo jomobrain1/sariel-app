@@ -1,3 +1,4 @@
+import { initialIncident, pendingIncident, type Incident } from '../incidents/routing.js';
 import { createHash } from 'node:crypto';
 import mongoose from 'mongoose';
 import { createHttpError, defineRoutes } from '@tilcayo/core';
@@ -14,7 +15,7 @@ const update=reportInput.extend({level:z.number().int().min(0).max(5)});
 export type Report=z.output<typeof update>;
 export interface StatusEvent {
   _id:string; owner:string; level:number; channel:'account'|'gateway'; createdAt:Date;
-  active:boolean; category:string; country?:string; fingerprint:string;
+  incident?:Incident; active:boolean; category:string; country?:string; fingerprint:string;
 }
 export const events=()=>mongoose.connection.collection<StatusEvent>('sariel_safety_events');
 export async function recordStatus(owner:string,report:Report,channel:StatusEvent['channel']){
@@ -22,11 +23,22 @@ export async function recordStatus(owner:string,report:Report,channel:StatusEven
   const fingerprint=JSON.stringify([report.level,report.category,report.country??null,channel]);
   const event:StatusEvent={_id:key,owner,level:report.level,category:report.category,country:report.country,
     active:report.level>=2,channel,createdAt:new Date(),fingerprint};
+  if(event.active) event.incident=pendingIncident(event);
   try { await events().insertOne(event); }
   catch(error){
     if(!(error instanceof mongoose.mongo.MongoServerError && error.code===11000)) throw error;
-    if((await events().findOne({_id:key}))?.fingerprint!==fingerprint)
+    const existing=await events().findOne({_id:key});
+    if(existing?.fingerprint!==fingerprint)
       throw createHttpError(409,'CONFLICT','Request ID already used for a different report.');
+  }
+  // Commit intake first. If routing is interrupted, the pending queue and a retry
+  // with the original request ID can both recover the same report.
+  if(event.active){
+    const pending=await events().findOne({_id:key,'incident.state':'pending'});
+    if(pending){
+      const assigned=await initialIncident(pending);
+      if(assigned.tenant) await events().updateOne({_id:key,'incident.state':'pending','incident.version':pending.incident!.version},{$set:{incident:assigned}});
+    }
   }
   return {reference:key,level:report.level,status:levels[report.level]};
 }

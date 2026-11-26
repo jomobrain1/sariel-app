@@ -1,3 +1,4 @@
+import { SafetyDashboard } from '../features/safety/safety-dashboard';
 import { StaffPanel } from '../features/administration/workforce';
 import { Link, Navigate } from 'react-router'
 import { useAuth } from '../app/auth'
@@ -6,6 +7,7 @@ import { AccountIcon } from '../components/account-icon'
 export function DashboardPage() {
   const { user } = useAuth()
   if (user?.platformRole === 'superadmin' && !user.tenant) return <Navigate to="/admin/workspaces" replace />;
+  if (user && !user.tenant) return <SafetyDashboard key={user.id} accountId={user.id} />;
   const firstName = user?.name.trim().split(/\s+/)[0] || 'there'
   const role = user?.platformRole === 'superadmin' && !user?.tenant ? 'Super Admin' : user?.roles?.includes('admin') ? 'Administrator' : user?.adminTabs?.length ? 'Staff' : 'Member'
   const joined = user?.createdAt && Number.isFinite(Date.parse(user.createdAt))

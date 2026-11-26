@@ -1,4 +1,4 @@
-type AccountIconName = 'user' | 'dashboard' | 'shield' | 'logout' | 'edit' | 'mail' | 'calendar' | 'lock' | 'monitor' | 'arrow' | 'globe'
+type AccountIconName = 'user' | 'dashboard' | 'shield' | 'logout' | 'edit' | 'mail' | 'calendar' | 'lock' | 'monitor' | 'arrow' | 'globe' | 'search' | 'filter' | 'tag' | 'activity'
 
 export function AccountIcon({ name }: { name: AccountIconName }) {
   const paths: Record<AccountIconName, string> = {
@@ -12,6 +12,10 @@ export function AccountIcon({ name }: { name: AccountIconName }) {
     lock: 'M5 10h14v11H5zm3 0V7a4 4 0 0 1 8 0v3m-4 5v2',
     monitor: 'M3 4h18v13H3zm5 17h8m-4-4v4',
     arrow: 'm9 5 7 7-7 7',
+    search: 'M17 17l5 5M19 10.5a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0Z',
+    filter: 'M3 4h18l-7 8v8l-4-2v-6Z',
+    tag: 'M3 3h8l10 10-8 8L3 11ZM7 7h.01',
+    activity: 'M12 3 2 21h20ZM12 9v5m0 3v.1',
     globe: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18m-9-9c5 5 5 13 0 18-5-5-5-13 0-18Z',
   }
   return <svg className="account-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>
