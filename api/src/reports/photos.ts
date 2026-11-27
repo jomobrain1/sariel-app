@@ -44,7 +44,11 @@ function uuidFrom(seed:string) {
 async function ownKey(owner:string) {
   await ensureIndexes();
   const existing = await keys().findOne({_id:owner});
-  if (existing) return {selector:existing.selector, key:open(existing.key, 'report-key:' + owner)};
+  if (existing) {
+    // Fails when this server's SARIEL_DATA_KEY differs from the one that stored the key (e.g. local vs. Vercel on one database).
+    try { return {selector:existing.selector, key:open(existing.key, 'report-key:' + owner)}; }
+    catch { throw createHttpError(503, 'KEY_UNAVAILABLE', 'Report photos can’t be created right now: this server can’t read your report key. An administrator needs to check SARIEL_DATA_KEY.'); }
+  }
   const selector = randomBytes(16).toString('hex'), key = randomBytes(32);
   try { await keys().insertOne({_id:owner, selector, key:sealSecret(key, 'report-key:' + owner), createdAt:new Date()}); }
   catch (error) {

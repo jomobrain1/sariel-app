@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { AdminDashboard, AdminUsersTable, AdminUserStats, AdminMetricCard, ResourceLayout } from '@tilcayo/admin';
 import { Alert, Button, Input, TableSkeleton } from '@tilcayo/ui';
 import './users-toolbar.css';
+import { apiMessage, apiStatus } from '../../lib/api-status';
 import { AccountIcon } from '../../components/account-icon';
 import { useAuth } from '../../app/auth';
 import { useGetAdminUsersQuery, type UsersQuery } from './admin.api';
@@ -17,7 +18,7 @@ export function UsersPage({ overview = false }: { overview?: boolean }) {
   const [remove] = useDeleteAdminUserMutation();
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState<UsersQuery>({ page: 1, search: '', role: 'all' });
-  const { currentData, isFetching, isError, refetch } = useGetAdminUsersQuery(query, { refetchOnMountOrArgChange: true });
+  const { currentData, isFetching, isError, error, refetch } = useGetAdminUsersQuery(query, { refetchOnMountOrArgChange: true });
   const directory = currentData?.data;
   const stats = isError ? undefined : directory?.stats;
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -37,7 +38,7 @@ export function UsersPage({ overview = false }: { overview?: boolean }) {
       <select className="tl-select" aria-label="Filter users by status" value={query.status ?? 'all'} onChange={event => setQuery({ ...query, status: event.target.value as UsersQuery['status'], page: 1 })}><option value="all">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select>
       <Button type="submit">Search</Button>
     </form>
-    {isError ? <div className="tl-admin-empty"><Alert variant="danger">Unable to load users. Check your connection and try Refresh.</Alert></div>
+    {isError ? <div className="tl-admin-empty"><Alert variant="danger">{apiMessage(error, 'Unable to load users. Check your connection and try Refresh.')}{apiStatus(error) ? ` (error ${apiStatus(error)})` : ''}</Alert></div>
       : directory ? <AdminUsersTable users={directory.items} renderActions={account => <div className="tl-admin-row-actions">
         {isAdmin && <>{(!user?.tenancyEnabled || !!user?.tenant) ? <RoleAssignment account={account} /> : user?.platformRole === 'superadmin' && <SuperadminAction account={account} disabled={account.id === user?.id} />}<UserStatusAction account={account} disabled={account.id === user?.id} /></>}
         <DeleteButton iconOnly name={account.name} disabled={account.id === user?.id || (!!account.roles?.includes('admin') && !isAdmin)} onDelete={() => remove(account.id).unwrap()} />
