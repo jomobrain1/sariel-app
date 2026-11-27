@@ -52,3 +52,7 @@
 .org-checks li {color:#5b6b66}.org-checks li.is-ok {color:#0f4d3f;font-weight:600}
 .org-checks small {font-weight:400;color:#5b6b66}
 .org-pill {white-space:nowrap;flex:none}
+.org-tabs {display:flex;gap:4px;margin:0 0 16px;border-bottom:1px solid #e3e9e6}
+.org-tabs button {position:relative;min-height:40px;padding:0 14px;border:0;background:none;color:#5b6b66;font-weight:700;cursor:pointer}
+.org-tabs button[aria-selected=true] {color:#0f4d3f}
+.org-tabs button[aria-selected=true]::after {content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:#0f4d3f}

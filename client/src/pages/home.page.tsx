@@ -30,6 +30,7 @@ export function HomePage() {
           : <><Link className="home-primary" to="/register">Create a free account <AccountIcon name="arrow" /></Link>
             <Link className="home-secondary" to="/login">Log in</Link></>}
       </div>
+      <p className="home-report"><Link to="/report-someone">See someone in danger? Report it, no account needed →</Link></p>
     </section>
 
     <section className="home-features" aria-label="What Sariel does">

@@ -43,3 +43,6 @@
 @media (max-width:520px){.home-features{grid-template-columns:1fr}.home-actions a{width:100%}}
 .home-features-3 {grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:860px){.home-features-3{grid-template-columns:1fr}}
+.home-report {margin:18px 0 0}
+.home-report a {color:#a3342b;font-weight:700}
+.home-report a:hover {text-decoration:underline}
