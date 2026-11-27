@@ -34,10 +34,10 @@ export function PhotoCheckPage() {
     <header className="ai-head"><h1 id="check-title">Photo check</h1><p>Decode a photo someone forwarded or posted, and confirm whether it carries a genuine Sariel report.</p></header>
     <section className="ai-panel">
       <div className="check-grid">
-        <label className="check-drop">{image ? <img src={image} alt="Photo to check" /> : <><AccountIcon name="image" /><span>Choose the original photo file</span></>}
+        <label className={'check-drop' + (image ? ' has-image' : '')}>{image ? <><img src={image} alt="Photo to check" /><span className="check-change">Choose a different photo</span></>
+          : <><span className="check-drop-icon"><AccountIcon name="image" /></span><strong>Choose a photo to check</strong><small>PNG or JPEG, up to 6 MB</small></>}
           <input type="file" accept="image/png,image/jpeg" onChange={choose} /></label>
         <div className="check-side">
-          <p className="ai-muted">Use the original file. Screenshots or photos saved from Facebook or WhatsApp are compressed and lose the hidden report; use the link from the post instead.</p>
           <div className="ai-actions">
             <button className="ai-ghost" disabled={!image || checking.isLoading} onClick={() => void run(false)}>Check only</button>
             <button className="ai-primary" disabled={!image || checking.isLoading} onClick={() => void run(true)}>Check and create incident</button>

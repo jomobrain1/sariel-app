@@ -39,13 +39,21 @@
 .ai-table th {text-align:left;color:#5b6b66;font-weight:600;padding:8px;border-bottom:1px solid #dfe5e2}
 .ai-table td {padding:10px 8px;border-bottom:1px solid #eef2f0}
 @media(max-width:900px){.ai-cards{grid-template-columns:1fr}.ai-table{display:block;overflow-x:auto}}
-.check-grid {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:20px;align-items:start}
-.check-drop {display:grid;place-items:center;gap:8px;min-height:240px;border:2px dashed #c9d3cf;border-radius:12px;color:#0f4d3f;font-weight:700;cursor:pointer;overflow:hidden;text-align:center;padding:10px}
-.check-drop img {width:100%;max-height:320px;object-fit:contain}
+.check-grid {display:grid;gap:18px;max-width:640px;margin:0 auto}
+.check-drop {position:relative;display:grid;place-items:center;align-content:center;gap:6px;min-height:220px;padding:20px;border:2px dashed #c9d3cf;border-radius:14px;background:#f8fbf9;color:#0f4d3f;cursor:pointer;overflow:hidden;text-align:center;transition:border-color .15s,background .15s}
+.check-drop:hover, .check-drop:focus-within {border-color:#0f4d3f;background:#f1f6f3}
+.check-drop strong {font-size:1rem}
+.check-drop small {color:#5d6f69}
+.check-drop-icon {display:grid;place-items:center;width:48px;height:48px;margin-bottom:4px;border-radius:12px;background:#e3eee9}
+.check-drop .account-icon {width:24px;height:24px}
+.check-drop.has-image {padding:12px;border-style:solid}
+.check-drop img {width:100%;max-height:340px;object-fit:contain;border-radius:8px}
+.check-change {font-size:.88rem;font-weight:600;text-decoration:underline}
 .check-drop input {position:absolute;width:1px;height:1px;opacity:0}
-.check-drop .account-icon {width:28px;height:28px}
 .check-side {display:grid;gap:14px}
-.check-side > p {margin:0;line-height:1.5}
+.check-side .ai-actions {display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.check-side .ai-actions button {width:100%}
+@media (max-width:520px) {.check-side .ai-actions {grid-template-columns:1fr}}
 .check-result {padding:16px;border-radius:10px;border:1px solid}
 .check-result.is-valid {background:#eef6f2;border-color:#bfdccd}
 .check-result.is-invalid {background:#fbefed;border-color:#ecc4be}
