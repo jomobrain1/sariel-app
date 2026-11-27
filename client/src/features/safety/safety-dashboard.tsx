@@ -1,5 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
+import { Modal } from '@tilcayo/ui';
+import { useAuth } from '../../app/auth';
 import { AccountIcon } from '../../components/account-icon';
 import { labels, safetyApi, type Update } from './safety.api';
 import './safety-dashboard.css';
@@ -29,7 +31,7 @@ function IncidentLink() {
       setFeedback(taken ? 'That link name is taken. Choose another.' : 'Could not generate the link. Try again.');
     }
   }
-  return <details className="safety-panel safety-link"><summary><span className="safety-link-icon"><AccountIcon name="link"/></span><span>One-tap incident link</span><AccountIcon name="arrow"/></summary>
+  return <div className="safety-link">
     <p>Opening this link reports for your account. Keep the name private.</p>
     <a href="/safety/activate.html?practice=1" target="_blank" rel="noreferrer">Practice with the gallery</a>
     <form className="incident-link-form" onSubmit={generate}>
@@ -45,10 +47,31 @@ function IncidentLink() {
       <button onClick={async()=>{try{await navigator.clipboard.writeText(url);setFeedback('Link copied.');}catch{setFeedback('Select the link and copy it manually.');}}}>Copy link</button></>}
     <button disabled={busy} onClick={async()=>{try{await revoke().unwrap();generated.reset();setFeedback('Link revoked.');}catch{setFeedback('Could not revoke the link. Try again.');}}}>Revoke link</button>
     {feedback && <p role="status">{feedback}</p>}
-  </details>;
+  </div>;
+}
+
+function Tools() {
+  const [linkOpen, setLinkOpen] = useState(false);
+  const tools = [
+    {to:'/assistant', icon:'chat', title:'Assistant', text:'Ask about your safety, circle or check-ins'},
+    {to:'/photos', icon:'image', title:'Report photos', text:'Hide a report inside an ordinary photo'},
+    {to:'/circle', icon:'user', title:'Circle', text:'People who look out for you'},
+  ] as const;
+  return <section className="safety-panel safety-tools" aria-labelledby="tools-title">
+    <h2 id="tools-title">Tools</h2>
+    <ul>
+      {tools.map(t => <li key={t.to}><Link to={t.to}><span className="safety-link-icon"><AccountIcon name={t.icon}/></span>
+        <span><strong>{t.title}</strong><small>{t.text}</small></span><AccountIcon name="arrow"/></Link></li>)}
+      <li><button type="button" onClick={() => setLinkOpen(true)}><span className="safety-link-icon"><AccountIcon name="link"/></span>
+        <span><strong>One-tap incident link</strong><small>Report by opening a private link</small></span><AccountIcon name="arrow"/></button></li>
+    </ul>
+    <Modal open={linkOpen} title="One-tap incident link" onClose={() => setLinkOpen(false)}>{linkOpen && <IncidentLink/>}</Modal>
+  </section>;
 }
 
 export function SafetyDashboard({accountId}:{accountId:string}) {
+  const { user } = useAuth();
+  const firstName = user?.name.trim().split(/\s+/)[0] ?? '';
   const status = safetyApi.useSafetyStatusQuery(accountId,{refetchOnMountOrArgChange:true});
   const history = safetyApi.useSafetyHistoryQuery(accountId,{refetchOnMountOrArgChange:true});
   const [send] = safetyApi.useSubmitSafetyUpdateMutation();
@@ -95,11 +118,22 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
   }
 
   return <section className="safety-dashboard">
-    <h1 className="safety-sr-only">My safety dashboard</h1>
+    <header className="safety-heading"><h1>{firstName ? `Hi ${firstName}` : 'Your safety'}</h1><p>Your safety at a glance. Report, check in, or reach your circle.</p></header>
     {message && <div className="safety-feedback" role="status">{message}{reference && <details><summary>Report reference</summary><code>{reference}</code></details>}</div>}
-    <div className="safety-grid">
-      <form className="safety-panel safety-report" onSubmit={report}>
-        <h2>Report an incident</h2>
+    <div className="safety-layout">
+      <section className={'safety-panel safety-current level-' + (current?.level ?? 0)} aria-labelledby="status-title">
+        <span className="safety-current-icon"><AccountIcon name="shield"/></span><h2 id="status-title">Current safety status</h2>
+        {status.isError ? <button onClick={()=>void status.refetch()}>Retry loading status</button> : <><strong>{current?labels[current.level]:'Loading…'}</strong>
+          <p>{current?.reportedAt ? `Reported ${date(current.reportedAt)}` : 'No reports yet'}</p></>}
+        <div className="safety-current-foot">
+          <button disabled={busy} onClick={()=>void submit({level:1,category:'welfare'})}>Confirm I’m safe</button>
+          {current && current.level>=2 && <small>Checking in keeps your active incident open.</small>}
+        </div>
+      </section>
+      <WelfareCard/>
+      <Tools/>
+      <form className="safety-panel safety-report" onSubmit={report} aria-labelledby="report-title">
+        <h2 id="report-title">Report an incident</h2>
         <fieldset disabled={busy}><legend>Incident type</legend>
           <div className="safety-options">{levels.map(n=><label className="safety-choice" key={n}>
             <input type="radio" name="level" value={n} required checked={level===n} onChange={()=>setLevel(n)}/>
@@ -114,25 +148,13 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
           <small>{1000 - note.length} characters left · Shared with the responders handling your report.</small></label>
         <button className="safety-primary" type="submit" disabled={busy}>Submit incident report</button>
       </form>
-      <div className="safety-side">
-        <section className="safety-panel safety-current">
-          <span className="safety-current-icon"><AccountIcon name="shield"/></span><h2>Current safety status</h2>
-          {status.isError ? <button onClick={()=>void status.refetch()}>Retry loading status</button> : <><strong>{current?labels[current.level]:'Loading…'}</strong>
-            {current?.reportedAt && <p>Reported {date(current.reportedAt)}</p>}</>}
-          <button disabled={busy} onClick={()=>void submit({level:1,category:'welfare'})}>Confirm I’m safe</button>
-          {current && current.level>=2 && <small>Checking in keeps your active incident open.</small>}
-        </section>
-        <WelfareCard/>
-        <IncidentLink/>
-        <Link to="/assistant" className="safety-panel safety-photos"><span className="safety-link-icon"><AccountIcon name="chat"/></span><span>Assistant<small>Ask about your safety, circle or check-ins</small></span><AccountIcon name="arrow"/></Link>
-        <Link to="/photos" className="safety-panel safety-photos"><span className="safety-link-icon"><AccountIcon name="image"/></span><span>Report photos<small>Hide a report inside an ordinary photo</small></span><AccountIcon name="arrow"/></Link>
-      </div>
+      <section className="safety-panel safety-history" aria-labelledby="activity-title"><h2 id="activity-title">Recent activity</h2>
+        {history.isError ? <button onClick={()=>void history.refetch()}>Retry loading activity</button> : history.isLoading ? <p>Loading activity…</p> : events.length ? <>
+          <ul>{(showAll?events:events.slice(0,6)).map(event=><li key={event._id}><span className={'safety-dot level-'+event.level} aria-hidden="true"/>
+            <span>{labels[event.level]}{event.level>=2 && <small>{event.active?'Open incident':'Resolved incident'}</small>}</span><time dateTime={event.createdAt}>{date(event.createdAt)}</time></li>)}</ul>
+          {events.length>6 && <button onClick={()=>setShowAll(!showAll)}>{showAll?'Show less':`Show all ${events.length}`}</button>}
+        </> : <p>Your reports and check-ins will appear here.</p>}
+      </section>
     </div>
-    <section className="safety-panel safety-history"><h2>Recent safety activity</h2>
-      {history.isError ? <button onClick={()=>void history.refetch()}>Retry loading activity</button> : history.isLoading ? <p>Loading activity…</p> : events.length ? <>
-        <ul>{(showAll?events:events.slice(0,5)).map(event=><li key={event._id}><span>{labels[event.level]}{event.level>=2 && <small>{event.active?'Open incident':'Resolved incident'}</small>}</span><time dateTime={event.createdAt}>{date(event.createdAt)}</time></li>)}</ul>
-        {events.length>5 && <button onClick={()=>setShowAll(!showAll)}>{showAll?'Show less':'Show more'}</button>}
-      </> : <p>Your reports and check-ins will appear here.</p>}
-    </section>
   </section>;
 }
