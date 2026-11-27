@@ -65,6 +65,7 @@ export default async function sariel(req, res) {
     url.searchParams.delete('path');
     req.url = url.pathname + url.search;
   }
+  res.setHeader('X-Sariel-Path-Param', JSON.stringify(url.searchParams.getAll('path').length ? {left:url.searchParams.getAll('path')} : {stripped:added}));
   if (url.pathname === '/api/cron/jobs') return cron(req, res);
   return handler(req, res);
 }
