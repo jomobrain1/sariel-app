@@ -59,7 +59,12 @@ function ResponsePanel({item,refresh}:{item:PlatformIncident;refresh:()=>Promise
   async function run(command:Command){
     if(item.version===undefined || busy)return;
     setBusy(command.action); setSaved('');
-    try{ await visibleProgress(send({reference:item.reference,version:item.version,...command}).unwrap()); setNote(''); setConfirmed(false); setSaved(savedLabels[command.action]); }
+    try{
+      const result=await visibleProgress(send({reference:item.reference,version:item.version,...command}).unwrap());
+      const others=(result as {data?:{alsoClosed?:number}}|null)?.data?.alsoClosed ?? 0;
+      setNote(''); setConfirmed(false);
+      setSaved(savedLabels[command.action]+(others ? ` ${others} other open report${others>1?'s':''} from this person ${others>1?'were':'was'} closed too.` : ''));
+    }
     catch{/* Shown below; refresh picks up concurrent changes. */}
     try{ await refresh(); } finally { setBusy(undefined); }
   }
@@ -79,7 +84,7 @@ function ResponsePanel({item,refresh}:{item:PlatformIncident;refresh:()=>Promise
       <label className="incident-note">Note<textarea rows={3} maxLength={1500} value={note} onChange={e=>setNote(e.target.value)} placeholder="Who you spoke to, what was done, what happens next…"/></label>
       <div className="incident-act-row">
         <button className="incident-secondary" disabled={!!busy || !text} aria-busy={busy==='note'} onClick={()=>void run({action:'note',note:text})}>{label('note','Add note')}</button>
-        <button className="incident-resolve" disabled={!!busy || !text} aria-busy={busy==='resolve'} onClick={()=>{ if(confirm('Resolve this incident? It will close for everyone handling it.')) void run({action:'resolve',note:text}); }}>{label('resolve','Resolve with note')}</button>
+        <button className="incident-resolve" title="Closes all of this person’s open incidents" disabled={!!busy || !text} aria-busy={busy==='resolve'} onClick={()=>{ if(confirm('Resolve this incident? This also closes any other open incidents from this person, so their status returns to Confirmed safe.')) void run({action:'resolve',note:text}); }}>{label('resolve','Resolve with note')}</button>
       </div>
       <small>Write a note first to resolve. “Person contacted” saves the note with it if you write one.</small>
     </div>}

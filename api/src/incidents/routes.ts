@@ -190,7 +190,16 @@ export default defineRoutes(router=>{
       const update=await events().updateOne(filter,{$inc:{'incident.version':1},$push:{'incident.audit':entry},
         ...(resolving?{$set:{'incident.state':'resolved' as const,active:false}}:{})});
       if(!update.modifiedCount) throw stale();
-      return ctx.response.noContent();
+      // The person's status shows their highest open incident, so resolving one would leave them red while
+      // another stays open. The platform team sees every incident: resolving closes all of the person's open ones.
+      let alsoClosed=0;
+      if(resolving){
+        const others={owner:event.owner,active:true,_id:{$ne:event._id}};
+        const linked={...entry,note:`Resolved together with incident ${event._id.slice(0,8)}: ${body.note}`};
+        alsoClosed=(await events().updateMany(others,{$inc:{'incident.version':1},$push:{'incident.audit':linked},
+          $set:{'incident.state':'resolved' as const,active:false}})).modifiedCount;
+      }
+      return resolving ? ctx.response.success({alsoClosed}) : ctx.response.noContent();
     },{validate:{params:z.object({reference:z.string().regex(/^[a-f0-9]{64}$/)}),body:responseAction}});
     router.get('/pending',async ctx=>{
       const items=await events().find(pending,{projection:{_id:1,createdAt:1}}).sort({createdAt:1,_id:1})
