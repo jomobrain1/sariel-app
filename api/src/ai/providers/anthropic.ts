@@ -38,8 +38,8 @@ export const anthropic: ChatProvider = {
       if (error instanceof Anthropic.RateLimitError) throw new ProviderError('Anthropic rate limit reached. Try again shortly.', 429, true);
       if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) throw new ProviderError('Anthropic rejected the API key.');
       if (error instanceof Anthropic.BadRequestError) throw new ProviderError('Anthropic rejected the request: ' + error.message.slice(0, 200));
-      if (error instanceof Anthropic.APIError) throw new ProviderError(`Anthropic error ${error.status ?? ''}`.trim(), 502, true);
-      throw new ProviderError('Anthropic could not be reached.', 502, true);
+      if (error instanceof Anthropic.APIError) throw new ProviderError(`Anthropic error ${error.status ?? ''}`.trim(), (error.status ?? 500) >= 500 ? 503 : 502, (error.status ?? 500) >= 500);
+      throw new ProviderError('Anthropic could not be reached.', 503, true);
     }
     const parts:Part[] = [];
     for (const block of response.content) {

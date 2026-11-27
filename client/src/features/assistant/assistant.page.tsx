@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { Link, Navigate, useSearchParams } from 'react-router';
 import { useAuth } from '../../app/auth';
 import { AccountIcon } from '../../components/account-icon';
-import { apiStatus } from '../../lib/api-status';
+import { apiCode, apiStatus } from '../../lib/api-status';
 import { assistantApi, type ChatMessage, type Language } from './assistant.api';
 import { RichText } from './rich-text';
 import './assistant.css';
@@ -16,6 +16,7 @@ const statusText = { pending: 'Waiting for you', done: 'Done', cancelled: 'Cance
 
 function problem(error: unknown) {
   const status = apiStatus(error);
+  if (apiCode(error) === 'AI_BUSY') return 'The AI service is busy right now. Please try again in a minute.';
   if (status === 503) return 'The assistant isn’t set up yet. An administrator needs to add an AI provider key.';
   if (status === 429) return 'You’ve reached today’s limit or are sending too fast. Try again later.';
   if (status === 409) return 'Confirm or cancel the action above first.';
@@ -49,16 +50,24 @@ function Conversation({ id }: { id: string }) {
   const [, deciding] = assistantApi.useDecideMutation({ fixedCacheKey: 'decide-' + id });
   const [text, setText] = useState('');
   const [error, setError] = useState('');
+  const [sentText, setSentText] = useState('');
+  const [slow, setSlow] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const data = chat.currentData?.data;
   const pending = data?.messages.some(m => m.action?.status === 'pending');
   const busy = sending.isLoading || deciding.isLoading;
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [data?.messages.length, sending.isLoading]);
+  useEffect(() => {
+    if (!busy) return;
+    const timer = setTimeout(() => setSlow(true), 12_000);
+    return () => { clearTimeout(timer); setSlow(false); };
+  }, [busy]);
   async function submit(value = text) {
     const message = value.trim();
     if (!message || busy) return;
-    setError(''); setText('');
+    setError(''); setText(''); setSentText(message);
     try { await send({ id, text: message }).unwrap(); } catch (failure) { setError(problem(failure)); setText(message); }
+    setSentText('');
   }
   function onKey(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void submit(); }
@@ -67,14 +76,16 @@ function Conversation({ id }: { id: string }) {
   if (!data) return <div className="chat-main"><p role="status" className="chat-empty">Loading…</p></div>;
   return <div className="chat-main">
     <ol className="chat-log" aria-live="polite">
-      {!data.messages.length && <li className="chat-welcome">
+      {!data.messages.length && !sending.isLoading && <li className="chat-welcome">
         <span className="chat-avatar"><AccountIcon name="shield" /></span>
         <h2>{data.language === 'sw' ? 'Nikusaidie vipi leo?' : 'How can I help today?'}</h2>
         <p>{data.language === 'sw' ? 'Naweza kuangalia hali yako, kundi lako na ukaguzi, na kukusaidia kuripoti au kutuma taarifa.' : 'I can check your status, circle and check-ins, and help you report, check in or post an update. You confirm every action.'}</p>
         <div className="chat-suggestions">{suggestions[data.language].map(s => <button key={s} disabled={busy} onClick={() => void submit(s)}>{s}</button>)}</div>
       </li>}
       {data.messages.map(m => <Message key={m.id} message={m} chat={id} busy={busy} onError={setError} />)}
-      {busy && <li className="chat-msg is-assistant"><div className="chat-bubble chat-typing" aria-label="Assistant is thinking"><span /><span /><span /></div></li>}
+      {sending.isLoading && sentText && <li className="chat-msg is-user"><div className="chat-bubble">{sentText}</div></li>}
+      {busy && <li className="chat-msg is-assistant"><div className="chat-bubble chat-typing" aria-label="Assistant is thinking"><span /><span /><span /></div>
+        {slow && <small className="chat-slow">Taking longer than usual. The AI service may be busy.</small>}</li>}
     </ol>
     <div ref={end} />
     <form className="chat-composer" onSubmit={(e: FormEvent) => { e.preventDefault(); void submit(); }}>

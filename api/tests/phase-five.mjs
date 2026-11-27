@@ -84,8 +84,12 @@ try {
   test=await post('platform/ai/test',{capability:'embeddings'},{token:admin});
   assert.equal(test.detail,'16 dimensions');
   // Provider failures are reported, not thrown at the admin.
+  // A brief provider failure is retried once automatically; a persistent one is reported as busy.
   gemini.fail=1;
-  assert.equal((await post('platform/ai/test',{capability:'chat'},{token:admin})).ok,false);
+  assert.equal((await post('platform/ai/test',{capability:'chat'},{token:admin})).ok,true);
+  gemini.fail=2;
+  const busy=await post('platform/ai/test',{capability:'chat'},{token:admin});
+  assert.equal(busy.ok,false);assert.match(busy.detail,/busy/);
   // Switching the chat model takes effect immediately.
   await put('platform/ai',{...settings,chat:{provider:'gemini',model:'gemini-2.5-pro'}},{token:admin});
   await post('platform/ai/test',{capability:'chat'},{token:admin});
@@ -194,7 +198,7 @@ try {
   // A provider failure leaves no half-finished turn, so retrying doesn't duplicate the message.
   const countBefore=(await call('individual/assistant/conversations/'+chat.id,{token:alice.token})).messages.length;
   gemini.fail=3;
-  await say('This will fail',alice.token,502);
+  await say('This will fail',alice.token,503);
   assert.equal((await call('individual/assistant/conversations/'+chat.id,{token:alice.token})).messages.length,countBefore);
   gemini.fail=0;
 

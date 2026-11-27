@@ -79,3 +79,4 @@
 .chat-bubble p + p,.chat-bubble :is(ul,ol) {margin-top:8px}
 .chat-bubble :is(ul,ol) {margin-bottom:0;padding-left:20px}
 .chat-bubble li + li {margin-top:4px}
+.chat-slow {color:#6b7a75;font-size:.82rem}
