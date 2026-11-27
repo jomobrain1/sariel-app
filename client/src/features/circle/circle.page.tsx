@@ -137,7 +137,7 @@ function UpdateComposer() {
       </div>}
       <textarea aria-label="Update" maxLength={280} rows={3} placeholder="Or write your own, e.g. Travelling to Nairobi today, back on Friday" value={text}
         onChange={e => { setText(e.target.value); setPreset(null); setPlace(''); setBack(''); }} />
-      <div className="circle-composer-bar"><small>{missing ? `Add ${preset?.place?.replace('?', '').toLowerCase()} to post this update.` : `${280 - text.length} characters left`}</small>
+      <div className="circle-composer-bar"><small>{missing ? `Fill in “${preset?.place}” to post this update.` : `${280 - text.length} characters left`}</small>
         <button className="circle-primary" disabled={posting.isLoading || !text.trim() || missing}>{posting.isLoading ? 'Posting…' : 'Post update'}</button></div>
       {posting.isError && <p role="alert" className="circle-error">Couldn’t post your update. Try again.</p>}
     </form>

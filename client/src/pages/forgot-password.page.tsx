@@ -53,7 +53,7 @@ export function ForgotPasswordPage() {
     <section className="auth-panel auth-reset-form tl-stack" aria-labelledby="reset-title">
       <header className="auth-heading">
         <h1 id="reset-title" className="tl-heading-2">{step === 'email' ? 'Forgot password?' : step === 'code' ? 'Check your email' : 'Reset your password'}</h1>
-        <p>{step === 'email' ? 'Get back into your Tilcayo account' : message}</p>
+        <p>{step === 'email' ? 'Get back into your Sariel account' : message}</p>
       </header>
       <form onSubmit={submit} aria-busy={pending} className="tl-stack">
         {error && <p className="tl-alert tl-alert-danger" role="alert">{error}</p>}

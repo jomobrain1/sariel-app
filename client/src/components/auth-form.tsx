@@ -36,7 +36,7 @@ export function AuthForm({ mode, successMessage }: { mode: 'login' | 'register';
     <section className="auth-panel auth-account-form tl-stack" aria-labelledby="auth-title">
       <header className="auth-heading">
         <h1 id="auth-title" className="tl-heading-2">{registering ? 'Create your account' : 'Welcome back'}</h1>
-        <p>{registering ? 'Set up your Tilcayo account' : 'Sign in to your Tilcayo account'}</p>
+        <p>{registering ? 'Create your Sariel account' : 'Sign in to your Sariel account'}</p>
       </header>
       <form onSubmit={submit} aria-busy={pending} className="tl-stack">
         {error && <p className="tl-alert tl-alert-danger" role="alert">{error}</p>}
@@ -58,7 +58,7 @@ export function AuthForm({ mode, successMessage }: { mode: 'login' | 'register';
         </fieldset>
       </form>
       <div className="auth-alternate">
-        <p className="auth-alternate-label">{registering ? 'Already have an account?' : 'New to Tilcayo?'}</p>
+        <p className="auth-alternate-label">{registering ? 'Already have an account?' : 'New to Sariel?'}</p>
         <Link className="tl-btn tl-btn-outline auth-alternate-link" to={registering ? '/login' : '/register'} state={location.state}>{registering ? 'Log in' : 'Create an account'}</Link>
       </div>
     </section>
