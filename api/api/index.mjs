@@ -64,6 +64,16 @@ export default async function sariel(req, res) {
   if (added.length && added.join('/') === segments.join('/')) {
     url.searchParams.delete('path');
     req.url = url.pathname + url.search;
+    // Vercel also attaches its own parsed req.query (with `path`), which hides Express's query getter.
+    if (Object.hasOwn(req, 'query')) {
+      const query = {};
+      for (const key of new Set(url.searchParams.keys())) {
+        const values = url.searchParams.getAll(key);
+        query[key] = values.length > 1 ? values : values[0];
+      }
+      try { delete req.query; } catch { /* non-configurable */ }
+      if (Object.hasOwn(req, 'query')) Object.defineProperty(req, 'query', { value: query, writable: true, configurable: true, enumerable: true });
+    }
   }
   res.setHeader('X-Sariel-Path-Param', JSON.stringify(url.searchParams.getAll('path').length ? {left:url.searchParams.getAll('path')} : {stripped:added}));
   if (url.pathname === '/api/cron/jobs') return cron(req, res);

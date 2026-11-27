@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Modal } from '@tilcayo/ui';
 import { AccountIcon } from '../../components/account-icon';
 import { Toggle } from '../../components/toggle';
-import { apiStatus } from '../../lib/api-status';
+import { apiStatus, apiMessage } from '../../lib/api-status';
 import { photosApi, type CoverPhoto, type CreatedReportPhoto } from './photos.api';
 
 const levels = [{ value: 2, label: 'Assistance needed' }, { value: 3, label: 'Safety concern' }, { value: 4, label: 'Serious danger' }, { value: 5, label: 'Critical danger' }];
@@ -50,7 +50,7 @@ export function CreateReportPhoto({ cover, close }: { cover: CoverPhoto; close: 
     event.preventDefault();
     setError('');
     try { setCreated((await create({ coverId: cover.id, level, category, ...(country ? { country } : {}), ...(description.trim() ? { description: description.trim() } : {}) }).unwrap()).data); }
-    catch (failure) { setError(apiStatus(failure) === 404 ? 'That photo has expired. Choose another.' : 'Couldn’t create the report photo. Try again.'); }
+    catch (failure) { setError(apiStatus(failure) === 404 ? 'That photo has expired. Choose another.' : apiMessage(failure, 'Couldn’t create the report photo. Try again.')); }
   }
   if (created) return <Result photo={created} close={close} />;
   return <form className="report-form" onSubmit={submit}>
