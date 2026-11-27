@@ -19,6 +19,7 @@ function problem(error: unknown) {
   if (status === 503) return 'The assistant isn’t set up yet. An administrator needs to add an AI provider key.';
   if (status === 429) return 'You’ve reached today’s limit or are sending too fast. Try again later.';
   if (status === 409) return 'Confirm or cancel the action above first.';
+  if (status === 502) return 'The AI service rejected the request. An administrator may need to update the model in Settings → AI providers.';
   return 'Something went wrong. Try again.';
 }
 function readNotice() { try { return localStorage.getItem(NOTICE_KEY) === 'seen'; } catch { return false; } }

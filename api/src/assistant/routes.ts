@@ -158,9 +158,14 @@ export default defineRoutes(router => {
       if (await messages().findOne({conversation:conversation._id, 'action.status':'pending'}))
         throw createHttpError(409, 'ACTION_PENDING', 'Confirm or cancel the pending action first.');
       const text = (ctx.body as {text:string}).text;
-      await append(conversation._id, user.id, {role:'user', parts:[{type:'text', text}]});
+      const added = await append(conversation._id, user.id, {role:'user', parts:[{type:'text', text}]});
+      try { await advance(conversation, {userId:user.id, userName:user.name}); }
+      catch (error) {
+        // Nothing was answered, so remove this turn; retrying then won't duplicate the message.
+        await messages().deleteMany({conversation:conversation._id, seq:{$gte:added.seq}});
+        throw error;
+      }
       if (conversation.title === 'New chat') await conversations().updateOne({_id:conversation._id}, {$set:{title:text.slice(0, 60)}});
-      await advance(conversation, {userId:user.id, userName:user.name});
       return ctx.response.success({...conversationView((await conversations().findOne({_id:conversation._id}))!),
         messages:display(await messages().find({conversation:conversation._id}).sort({seq:1}).toArray())});
     }, {middleware:[rateLimit({windowMs:60_000, max:15})], validate:{params, body:z.strictObject({text:z.string().trim().min(1).max(2000)})}});
