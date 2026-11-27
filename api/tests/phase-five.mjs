@@ -15,8 +15,16 @@ delete process.env.GEMINI_API_KEY; delete process.env.ANTHROPIC_API_KEY;
 
 // ── Fake Gemini ──────────────────────────────────────────────
 const gemini={calls:[],script:[],fail:0};
+const claude={calls:[]};
 const fake=createServer((req,res)=>{let raw='';req.on('data',c=>raw+=c);req.on('end',()=>{
-  const body=raw?JSON.parse(raw):{};gemini.calls.push({path:req.url,key:req.headers['x-goog-api-key'],body});
+  const body=raw?JSON.parse(raw):{};
+  if(req.url.startsWith('/v1/messages')){
+    const claudeKey=req.headers['x-api-key']??(req.headers.authorization??'').replace(/^Bearer /,'');
+    claude.calls.push({key:claudeKey,body});res.setHeader('content-type','application/json');
+    if(claudeKey!=='anthropic-test-key'){res.statusCode=401;return res.end(JSON.stringify({type:'error',error:{type:'authentication_error',message:'invalid x-api-key'}}));}
+    return res.end(JSON.stringify({id:'msg_test',type:'message',role:'assistant',model:body.model,content:[{type:'text',text:'OK from Claude'}],stop_reason:'end_turn',stop_sequence:null,usage:{input_tokens:12,output_tokens:4}}));
+  }
+  gemini.calls.push({path:req.url,key:req.headers['x-goog-api-key'],body});
   res.setHeader('content-type','application/json');
   if(gemini.fail>0){gemini.fail--;res.statusCode=500;return res.end(JSON.stringify({error:{message:'boom'}}));}
   if(req.headers['x-goog-api-key']!=='gemini-test-key'){res.statusCode=403;return res.end(JSON.stringify({error:{message:'API key not valid'}}));}
@@ -32,6 +40,7 @@ const fake=createServer((req,res)=>{let raw='';req.on('data',c=>raw+=c);req.on('
 function embedText(text){const v=new Array(16).fill(0);for(const w of text.toLowerCase().match(/[a-z]+/g)??[]){let h=0;for(const c of w)h=(h*31+c.charCodeAt(0))%16;v[h]+=1;}const n=Math.hypot(...v)||1;return v.map(x=>x/n);}
 fake.listen(0);await once(fake,'listening');
 process.env.GEMINI_BASE_URL='http://127.0.0.1:'+fake.address().port;
+process.env.ANTHROPIC_BASE_URL='http://127.0.0.1:'+fake.address().port;
 globalThis.fakeImage='';
 
 await mongoose.connect(process.env.TEST_MONGO_URI || 'mongodb://127.0.0.1:27017', {dbName:'sariel_test_'+randomUUID().replaceAll('-','')});
@@ -74,15 +83,16 @@ try {
 
   // Keys are stored encrypted and never returned.
   ai=await put('platform/ai/keys/gemini',{apiKey:'gemini-test-key'},{token:admin});
-  assert.deepEqual(ai.keys.gemini,{configured:true,source:'stored',hint:'••••-key'});
+  assert.equal(ai.keys.gemini.configured,true);assert.equal(ai.keys.gemini.hint,'••••-key');
+  assert.deepEqual(ai.keys.gemini.list.map(k=>[k.label,k.hint,k.default]),[['Key 1','••••-key',true]]);
   const stored=await mongoose.connection.collection('sariel_ai_settings').findOne({_id:'ai'});
   assert(!JSON.stringify(stored).includes('gemini-test-key'));
   let test=await post('platform/ai/test',{capability:'chat'},{token:admin});
-  assert.equal(test.ok,true);assert.equal(test.detail,'OK');
+  assert.equal(test.ok,true);assert.match(test.detail,/^OK · answered by Google Gemini gemini-3\.8-flash \(Key 1\)$/);
   assert.equal(gemini.calls.at(-1).key,'gemini-test-key');
   assert.match(gemini.calls.at(-1).path,/gemini-3\.8-flash:generateContent/);
   test=await post('platform/ai/test',{capability:'embeddings'},{token:admin});
-  assert.equal(test.detail,'16 dimensions');
+  assert.match(test.detail,/^16 dimensions · answered by/);
   // Provider failures are reported, not thrown at the admin.
   // A brief provider failure is retried once automatically; a persistent one is reported as busy.
   gemini.fail=1;
@@ -100,6 +110,42 @@ try {
   const chatRow=report.byCapability.find(r=>r.capability==='chat'&&r.model==='gemini-3.8-flash');
   assert(chatRow.requests>=2);assert(chatRow.failures>=1);assert(chatRow.input>=100);
   console.log('Phase 5 AI provider checks passed.');
+
+  // ── Key rotation and backup providers ────────────────────
+  ai=await put('platform/ai/keys/gemini',{apiKey:'bad-gemini-key-0000',label:'Spare'},{token:admin});
+  const spare=ai.keys.gemini.list.find(k=>k.label==='Spare');
+  assert.equal(spare.default,false);
+  ai=await post('platform/ai/keys/gemini/'+spare.id+'/default',undefined,{token:admin});
+  assert.deepEqual(ai.keys.gemini.list.map(k=>k.label),['Spare','Key 1']);
+  // The default (bad) key fails, so the next key answers automatically.
+  test=await post('platform/ai/test',{capability:'chat'},{token:admin});
+  assert.equal(test.ok,true);assert.match(test.detail,/\(Key 1\)/);
+  ai=await call('platform/ai/keys/gemini/'+spare.id,{method:'DELETE',token:admin});
+  assert.deepEqual(ai.keys.gemini.list.map(k=>k.label),['Key 1']);
+  // Backups must support the feature.
+  await put('platform/ai',{...settings,fallbacks:{chat:[{provider:'gemini',model:'x'},{provider:'gemini',model:'y'},{provider:'gemini',model:'z'},{provider:'gemini',model:'w'}]}},{token:admin,status:422});
+  ai=await put('platform/ai/keys/anthropic',{apiKey:'anthropic-test-key'},{token:admin});
+  ai=await put('platform/ai',{...settings,fallbacks:{chat:[{provider:'anthropic',model:'claude-opus-5-5'}]}},{token:admin});
+  assert.deepEqual(ai.fallbacks.chat,[{provider:'anthropic',model:'claude-opus-5-5'}]);
+  // Gemini keeps failing, so Claude answers as the backup.
+  gemini.fail=10;
+  test=await post('platform/ai/test',{capability:'chat'},{token:admin});
+  gemini.fail=0;
+  assert.equal(test.ok,true);assert.match(test.detail,/^OK from Claude · answered by Anthropic Claude claude-opus-5-5 .*backup/);
+  assert.equal(claude.calls.at(-1).body.model,'claude-opus-5-5');
+  assert.equal(claude.calls.at(-1).key,'anthropic-test-key');
+  // Healthy main provider: the backup isn't used.
+  const claudeCalls=claude.calls.length;
+  test=await post('platform/ai/test',{capability:'chat'},{token:admin});
+  assert.match(test.detail,/Google Gemini/);assert.equal(claude.calls.length,claudeCalls);
+  const backupReport=await call('platform/ai/usage?days=7',{token:admin});
+  assert(backupReport.byCapability.some(r=>r.provider==='anthropic'&&r.backups>=1));
+  // Key limit per provider.
+  for(let i=0;i<4;i++)await put('platform/ai/keys/anthropic',{apiKey:'extra-anthropic-'+i+'xxxx'},{token:admin});
+  await put('platform/ai/keys/anthropic',{apiKey:'one-too-many-xxxx'},{token:admin,status:422});
+  await call('platform/ai/keys/anthropic',{method:'DELETE',token:admin});
+  await put('platform/ai',settings,{token:admin});
+  console.log('Phase 5 key rotation and backup checks passed.');
 
   globalThis.phase5={call,post,put,admin,alice,bob,gemini,mongoose,settings,embedText};
   // Later sections are appended below as features land.
