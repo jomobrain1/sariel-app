@@ -4,6 +4,7 @@ import { Modal } from '@tilcayo/ui';
 import { useAuth } from '../../app/auth';
 import { apiStatus } from '../../lib/api-status';
 import { AccountIcon } from '../../components/account-icon';
+import { Toggle } from '../../components/toggle';
 import { labels } from '../safety/safety.api';
 import { circleApi, permissionLabels, relationships, type CircleMember, type CircleOverview, type Permissions, type Relationship } from './circle.api';
 import './circle.css';
@@ -173,11 +174,9 @@ function LocationCard() {
       <div><dt>Accuracy</dt><dd>{latest ? `±${Math.round(latest.accuracy)} m` : '—'}</dd></div>
       <div><dt>Kept for</dt><dd>{config?.retentionDays ?? 30} days</dd></div>
     </dl>
-    {!!history.currentData?.data.length && <details className="circle-trail" open={config?.sharing}>
-      <summary>Your recent locations ({history.currentData.data.length})</summary>
-      <p className="circle-hint">This is what people with location access see.</p>
+    {!!history.currentData?.data.length && <Toggle className="circle-trail" icon="globe" title="Your recent locations" hint="What people with location access see" count={history.currentData.data.length} open={config?.sharing}>
       <ol>{history.currentData.data.slice(0, 12).map(p => <li key={p.recordedAt}><a href={mapLink(p)} target="_blank" rel="noreferrer">{coordinates(p)}</a><span>±{Math.round(p.accuracy)} m · {ago(p.recordedAt)}</span></li>)}</ol>
-    </details>}
+    </Toggle>}
     <p className="circle-hint">Only people you allow can see your location.{' '}
       {!!history.currentData?.data.length && <button type="button" className="circle-link" disabled={clearing.isLoading} onClick={() => { if (confirm('Delete your whole location history?')) void clear(); }}>Delete my history</button>}</p>
   </section>;
@@ -205,9 +204,9 @@ function PersonLocation({ owner }: { owner: string }) {
       <div><strong>{coordinates(data.latest)}</strong><small>±{Math.round(data.latest.accuracy)} m · {ago(data.latest.recordedAt)}{!data.sharing && ' · sharing paused'}</small></div>
       <a className="circle-ghost" href={mapLink(data.latest)} target="_blank" rel="noreferrer">Open map</a>
     </div> : <p>No location shared yet.</p>}
-    {data.history.length > 1 && <details className="circle-trail"><summary>Past 24 hours ({data.history.length} points)</summary>
+    {data.history.length > 1 && <Toggle className="circle-trail" icon="globe" title="Past 24 hours" hint="Location points" count={data.history.length}>
       <ol>{data.history.slice(0, 12).map(p => <li key={p.recordedAt}><a href={mapLink(p)} target="_blank" rel="noreferrer">{coordinates(p)}</a><time dateTime={p.recordedAt}>{date(p.recordedAt)}</time></li>)}</ol>
-    </details>}
+    </Toggle>}
   </section>;
 }
 

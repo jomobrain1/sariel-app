@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Modal } from '@tilcayo/ui';
 import { AccountIcon } from '../../components/account-icon';
+import { Toggle } from '../../components/toggle';
 import { apiStatus } from '../../lib/api-status';
 import { photosApi, type CoverPhoto, type CreatedReportPhoto } from './photos.api';
 
@@ -25,13 +26,13 @@ function Result({ photo, close }: { photo: CreatedReportPhoto; close: () => void
       <label>Private link<span className="report-copy"><input readOnly value={link} onFocus={e => e.target.select()} /><button type="button" className="photo-ghost" onClick={() => copy(link, setNote)}>Copy</button></span></label>
       <label>Suggested caption<span className="report-copy"><input readOnly value={caption} onFocus={e => e.target.select()} /><button type="button" className="photo-ghost" onClick={() => copy(caption, setNote)}>Copy</button></span></label>
       {note && <small role="status">{note}</small>}
-      <details className="report-how" open><summary>How to send it when you need help</summary>
+      <Toggle className="report-how" icon="shield" title="How to send it when you need help" open>
         <ul>
           <li><strong>Facebook or social media:</strong> post the photo with the link in the caption. When the link is opened, Sariel is alerted.</li>
           <li><strong>Email:</strong> attach the downloaded photo file and send it to someone you trust, or upload it on Sariel’s <em>Share a photo</em> page.</li>
           <li><strong>WhatsApp or Telegram:</strong> send it as a <em>document/file</em>, not as a photo. Normal photo sending compresses it and removes the hidden report.</li>
           <li>Keep the file in your gallery. It looks like an ordinary picture.</li>
-        </ul></details>
+        </ul></Toggle>
       <button type="button" className="photo-ghost" onClick={close}>Done</button>
     </div>
   </div>;

@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Modal } from '@tilcayo/ui';
 import { useAuth } from '../../app/auth';
 import { AccountIcon } from '../../components/account-icon';
+import { Toggle } from '../../components/toggle';
 import { labels, safetyApi, type Update } from './safety.api';
 import './safety-dashboard.css';
 import { useAppDispatch } from '../../app/hooks';
@@ -119,7 +120,7 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
 
   return <section className="safety-dashboard">
     <header className="safety-heading"><h1>{firstName ? `Hi ${firstName}` : 'Your safety'}</h1><p>Your safety at a glance. Report, check in, or reach your circle.</p></header>
-    {message && <div className="safety-feedback" role="status">{message}{reference && <details><summary>Report reference</summary><code>{reference}</code></details>}</div>}
+    {message && <div className="safety-feedback" role="status">{message}{reference && <Toggle icon="tag" title="Report reference"><code>{reference}</code></Toggle>}</div>}
     <div className="safety-layout">
       <section className={'safety-panel safety-current level-' + (current?.level ?? 0)} aria-labelledby="status-title">
         <span className="safety-current-icon"><AccountIcon name="shield"/></span><h2 id="status-title">Current safety status</h2>
