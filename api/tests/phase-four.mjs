@@ -236,12 +236,17 @@ try {
   await post('individual/status',{requestId:randomUUID(),level:2,category:'welfare',note:'Stuck at the border',
     location:{latitude:-1.28333,longitude:36.81667,accuracy:20}},{token:tom.token});
   const channels=n=>n.deliveries.map(d=>d.channel).sort();
-  const queuedText=async n=>(await deliveryRows.findOne({notification:n.id})).text;
+  const queued=(n,channel)=>deliveryRows.findOne({notification:n.id,channel});
+  const queuedText=async n=>(await queued(n,'email')).text;
   const admin=await latest(sam,'incident-new'), kimAlert=await latest(kim,'circle-incident'), leeAlert=await latest(lee,'circle-incident');
   for (const alert of [admin,kimAlert,leeAlert]) {
     assert.equal(alert.priority,'emergency');
     assert.deepEqual(channels(alert),['email','sms']);
-    assert.match(await queuedText(alert),/Tom reported Assistance needed at .+ UTC\. Note: “Stuck at the border”/);
+    // Email and SMS say exactly what the in-app notification says.
+    const email=await queued(alert,'email'), sms=await queued(alert,'sms');
+    assert.deepEqual([email.subject,email.text],[alert.title,alert.body]);
+    assert.equal(sms.text,alert.title+'. '+alert.body);
+    assert.match(alert.body,/.+ UTC.+Stuck at the border/);
   }
   assert.match(await queuedText(admin),/maps\.google\.com\/\?q=-1\.28333,36\.81667/);
   assert.match(kimAlert.body,/maps\.google\.com/);
