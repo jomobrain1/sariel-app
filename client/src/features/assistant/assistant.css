@@ -1,0 +1,81 @@
+.chat-page {max-width:1328px;margin:24px auto 40px;display:grid;grid-template-columns:300px minmax(0,1fr);min-height:calc(100vh - 170px);border:1px solid #dfe5e2;border-radius:18px;background:#fff;overflow:hidden;color:#14231f}
+.chat-page button,.chat-page textarea {font:inherit}
+.chat-page :is(button,textarea,a):focus-visible {outline:3px solid #25866f;outline-offset:2px}
+.chat-page button:disabled {opacity:.55;cursor:not-allowed}
+.chat-primary {display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:0 18px;border:1px solid #0f4d3f;border-radius:10px;background:#0f4d3f;color:#fff;font-weight:700;cursor:pointer}
+.chat-ghost {min-height:42px;padding:0 16px;border:1px solid #c9d3cf;border-radius:10px;background:#fff;color:#0f4d3f;font-weight:600;cursor:pointer}
+.chat-error {margin:0;color:#a3342b;font-size:.9rem}
+
+.chat-side {display:flex;flex-direction:column;gap:14px;padding:22px 16px;border-right:1px solid #e3e9e6;background:#f7faf9;min-width:0}
+.chat-side h1 {margin:0 6px;font-size:1.4rem;letter-spacing:-.02em}
+.chat-new {display:grid;gap:10px}
+.chat-lang {display:grid;grid-template-columns:1fr 1fr;padding:3px;border:1px solid #dfe5e2;border-radius:10px;background:#fff}
+.chat-lang button {min-height:34px;border:0;border-radius:8px;background:none;color:#5b6b66;font-weight:600;cursor:pointer}
+.chat-lang button[aria-pressed=true] {background:#e4f1ea;color:#0f4d3f}
+.chat-list {list-style:none;margin:0;padding:0;display:grid;gap:4px;overflow-y:auto}
+.chat-list li {display:flex;align-items:center;border-radius:10px}
+.chat-list li:hover,.chat-list li.is-active {background:#e9f2ee}
+.chat-list li > button:first-child {flex:1;min-width:0;display:grid;gap:2px;padding:10px 12px;border:0;background:none;text-align:left;cursor:pointer;color:inherit}
+.chat-list strong {font-size:.92rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-list small {color:#5b6b66;font-size:.78rem}
+.chat-delete {width:32px;height:32px;margin-right:6px;border:0;border-radius:8px;background:none;color:#5b6b66;font-size:1.2rem;cursor:pointer;opacity:0}
+.chat-list li:hover .chat-delete,.chat-delete:focus-visible {opacity:1}
+.chat-delete:hover {background:#fbe4e1;color:#a3342b}
+
+.chat-main {display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff}
+.chat-log {flex:1;list-style:none;margin:0;padding:28px clamp(16px,4vw,48px) 12px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;max-height:calc(100vh - 290px)}
+.chat-msg {display:grid;gap:6px;max-width:min(680px,88%)}
+.chat-msg.is-user {align-self:flex-end;justify-items:end}
+.chat-bubble {padding:12px 16px;border-radius:16px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.is-user .chat-bubble {background:#0f4d3f;color:#fff;border-bottom-right-radius:6px}
+.is-assistant .chat-bubble {background:#f2f6f4;border-bottom-left-radius:6px}
+.chat-steps {display:flex;flex-wrap:wrap;gap:6px}
+.chat-steps span {display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;background:#eef6f2;color:#0f4d3f;font-size:.78rem;font-weight:600}
+.chat-steps .account-icon {width:12px;height:12px}
+.chat-action {display:grid;gap:10px;padding:14px 16px;border:1px solid #cfe3d9;border-radius:14px;background:#f6fbf8}
+.chat-action.is-pending {border-color:#0f4d3f;box-shadow:0 0 0 3px #e4f1ea}
+.chat-action small {color:#5b6b66;font-weight:600}
+.chat-action.is-done small {color:#0f4d3f}
+.chat-action.is-failed small {color:#a3342b}
+.chat-action-buttons {display:flex;gap:8px}
+.chat-typing {display:inline-flex;gap:4px;padding:14px 16px}
+.chat-typing span {width:7px;height:7px;border-radius:50%;background:#8aa39a;animation:chat-dot 1s infinite ease-in-out}
+.chat-typing span:nth-child(2) {animation-delay:.15s}
+.chat-typing span:nth-child(3) {animation-delay:.3s}
+@keyframes chat-dot {0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+@media (prefers-reduced-motion: reduce) {.chat-typing span{animation:none}}
+
+.chat-welcome,.chat-empty,.chat-notice {display:grid;justify-items:center;gap:10px;margin:auto;padding:40px 20px;text-align:center;max-width:560px}
+.chat-welcome {align-self:center}
+.chat-welcome h2,.chat-empty h2,.chat-notice h2 {margin:0;font-size:1.4rem}
+.chat-welcome p,.chat-empty p {margin:0;color:#5b6b66;line-height:1.5}
+.chat-avatar {display:grid;place-items:center;width:52px;height:52px;border-radius:16px;background:#e4f1ea;color:#0f4d3f}
+.chat-avatar .account-icon {width:26px;height:26px}
+.chat-suggestions {display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:6px}
+.chat-suggestions button {min-height:38px;padding:0 14px;border:1px solid #c9d3cf;border-radius:999px;background:#fff;color:#14231f;font-weight:500;cursor:pointer}
+.chat-suggestions button:hover:not(:disabled) {border-color:#0f4d3f;color:#0f4d3f}
+.chat-notice ul {margin:4px 0 8px;padding:0 0 0 18px;text-align:left;color:#3d4d48;line-height:1.6}
+
+.chat-composer {display:grid;gap:6px;padding:14px clamp(16px,4vw,48px) 18px;border-top:1px solid #eef2f0}
+.chat-composer > div {display:flex;align-items:flex-end;gap:8px;padding:8px 8px 8px 16px;border:1px solid #c9d3cf;border-radius:16px;background:#fff}
+.chat-composer > div:focus-within {border-color:#0f4d3f}
+.chat-composer textarea {flex:1;min-height:28px;max-height:160px;padding:6px 0;border:0;resize:none;outline:none;line-height:1.5;background:none;color:inherit;field-sizing:content}
+.chat-composer textarea:focus-visible {outline:none}
+.chat-send {display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:12px;background:#0f4d3f;color:#fff;cursor:pointer}
+.chat-send .account-icon {width:18px;height:18px}
+.chat-composer small {color:#6b7a75;font-size:.8rem}
+.chat-composer a {color:#0f4d3f;font-weight:600}
+
+@media(max-width:820px){
+  .chat-page {grid-template-columns:1fr;margin:12px 0 24px;min-height:auto}
+  .chat-side {border-right:0;border-bottom:1px solid #e3e9e6}
+  .chat-list {max-height:180px}
+  .chat-log {max-height:none;min-height:50vh}
+  .chat-delete {opacity:1}
+}
+
+.is-assistant .chat-bubble {white-space:normal}
+.chat-bubble p {margin:0}
+.chat-bubble p + p,.chat-bubble :is(ul,ol) {margin-top:8px}
+.chat-bubble :is(ul,ol) {margin-bottom:0;padding-left:20px}
+.chat-bubble li + li {margin-top:4px}

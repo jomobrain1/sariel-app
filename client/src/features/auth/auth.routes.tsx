@@ -11,6 +11,7 @@ import { ForbiddenPage } from '../../pages/forbidden.page'
 import { CirclePage } from '../circle/circle.page'
 import { NotificationsPage } from '../notifications/notifications.page'
 import { PhotosPage } from '../photos/photos.page'
+import { AssistantPage } from '../assistant/assistant.page'
 
 export const authRoutes: RouteObject[] = [
   { element: <GuestOnly />, children: [{ element: <AuthLayout />, children: [
@@ -25,6 +26,7 @@ export const authRoutes: RouteObject[] = [
     { path: '/circle', element: <CirclePage /> },
     { path: '/notifications', element: <NotificationsPage /> },
     { path: '/photos', element: <PhotosPage /> },
+    { path: '/assistant', element: <AssistantPage /> },
   ] },
   { path: '/forbidden', element: <ForbiddenPage /> },
 ]

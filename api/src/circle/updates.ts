@@ -13,6 +13,15 @@ const view = (u:Update) => ({id:u._id, text:u.text, createdAt:u.createdAt});
 let indexed: Promise<unknown> | undefined;
 const ensureIndexes = () => indexed ??= updates().createIndex({owner:1, createdAt:-1}).catch(error => { indexed = undefined; throw error; });
 
+/** Posts an update and notifies circle members who can see updates. */
+export async function postUpdate(owner:string, ownerName:string, text:string) {
+  await ensureIndexes();
+  const update:Update = {_id:randomUUID(), owner, text, createdAt:new Date()};
+  await updates().insertOne(update);
+  await emit({kind:'update-posted', owner, ownerName, update:update._id, text:update.text});
+  return view(update);
+}
+
 export default defineRoutes(router => {
   router.group({prefix:'/api/individual', middleware:individual}, () => {
     router.get('/updates', async ctx => {
@@ -22,12 +31,8 @@ export default defineRoutes(router => {
     });
 
     router.post('/updates', async ctx => {
-      await ensureIndexes();
       const user = auth.user(ctx);
-      const update:Update = {_id:randomUUID(), owner:user.id, text:(ctx.body as {text:string}).text, createdAt:new Date()};
-      await updates().insertOne(update);
-      await emit({kind:'update-posted', owner:user.id, ownerName:user.name, update:update._id, text:update.text});
-      return ctx.response.created(view(update));
+      return ctx.response.created(await postUpdate(user.id, user.name, (ctx.body as {text:string}).text));
     }, {middleware:[rateLimit({windowMs:60_000, max:20})], validate:{body:z.strictObject({text:z.string().trim().min(1).max(280)})}});
 
     router.delete('/updates/:id', async ctx => {
