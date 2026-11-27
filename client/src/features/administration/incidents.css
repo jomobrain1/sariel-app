@@ -47,3 +47,13 @@
 
 .incident-response{margin-top:1rem;padding:1rem;border:1px solid #ceddd6;border-radius:12px;background:#f7faf8}
 .incident-response h3{margin:0}.incident-response ol{padding-inline-start:1.3rem}.incident-response li{margin-block:.65rem}.incident-response small,.incident-response label{display:block;margin-block:.4rem;color:#43594e}.incident-response button{margin-top:.6rem}
+.incident-act{display:grid;gap:.6rem;margin-top:1rem;padding-top:1rem;border-top:1px solid #ceddd6}
+.incident-act-row{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+.incident-response .incident-act-row button{margin-top:0}
+.incident-response .incident-check{display:inline-flex;align-items:center;gap:.4rem;margin:0;color:inherit}
+.incident-response .incident-note{display:grid;gap:.35rem;margin:0;font-weight:600;color:inherit}
+.incident-note textarea{width:100%;box-sizing:border-box;padding:.6rem .7rem;border:1px solid #c9d3cf;border-radius:8px;font:inherit;resize:vertical}
+.incident-response li p{margin:.25rem 0 0;white-space:pre-wrap}
+.incident-resolve{min-height:40px;padding:0 16px;border:1px solid #0f4d3f;border-radius:8px;background:#fff;color:#0f4d3f;font:inherit;font-weight:700;cursor:pointer}
+.incident-resolve:hover:not(:disabled){background:#0f4d3f;color:#fff}
+.incident-resolve:disabled{opacity:.55;cursor:not-allowed}

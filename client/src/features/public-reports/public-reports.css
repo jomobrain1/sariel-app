@@ -68,3 +68,9 @@
 .pr-notes li {padding:8px 0;border-top:1px solid #edf1ef}
 .pr-notes li p {margin:0}.pr-notes li small {color:#5b6b66}
 @media (max-width:860px){.pr-admin-grid{grid-template-columns:1fr}}
+.pr-act {display:grid;gap:10px;padding:14px;border-radius:12px;background:#f4f8f6}
+.pr-act h3 {margin:0;font-size:1rem}
+.pr-act-detail {min-height:40px;padding:0 12px;border:1px solid #c9d3cf;border-radius:10px;font:inherit;background:#fff}
+.pr-act .pr-ghost:disabled, .pr-resolve:disabled {opacity:.5;cursor:not-allowed}
+.pr-resolve {min-height:40px;padding:0 16px;border:1px solid #0f4d3f;border-radius:10px;background:#0f4d3f;color:#fff;font-weight:700;cursor:pointer}
+.pr-notes li.is-action p {font-weight:700;color:#0f4d3f}

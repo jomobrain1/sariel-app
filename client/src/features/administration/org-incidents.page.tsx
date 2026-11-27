@@ -9,7 +9,7 @@ const actionLabel: Record<string, string> = {
   created: 'Report received', routed: 'Routed to your organisation', 'received-referral': 'Referred to your organisation', assign: 'Officer assigned',
   acknowledge: 'Acknowledged', dispatch: 'Help dispatched', note: 'Note added', refer: 'Referred', resolve: 'Resolved',
   'gallery-road': 'Person signalled: help still needed', 'gallery-bridge': 'Person signalled: situation worsening', 'gallery-mountain': 'Person signalled: immediate danger',
-  'photo-link-spread': 'Report link opened by 3+ people',
+  'photo-link-spread': 'Report link opened by 3+ people', contact: 'Person contacted by Sariel',
 };
 
 function Detail({ handle }: { handle: string }) {

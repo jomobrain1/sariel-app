@@ -491,6 +491,13 @@ try {
   await call('platform/public-reports/'+draftReport.id+'/update',{method:'POST',body:{status:'reviewing',note:'Called local partner'},token:admin,status:204});
   const reviewed=await call('platform/public-reports/'+draftReport.id,{token:admin});
   assert.equal(reviewed.status,'reviewing');assert.equal(reviewed.notes[0].text,'Called local partner');assert.equal(reviewed.contact,'+254700111222');
+  // Reviewer actions add a timeline entry and move the report along.
+  await call('platform/public-reports/'+draftReport.id+'/update',{method:'POST',body:{action:'contacted-reporter',note:'By phone'},token:admin,status:204});
+  await call('platform/public-reports/'+draftReport.id+'/update',{method:'POST',body:{action:'resolved'},token:admin,status:204});
+  const resolved=await call('platform/public-reports/'+draftReport.id,{token:admin});
+  assert.equal(resolved.status,'closed');
+  assert.deepEqual(resolved.notes.slice(-2).map(n=>[n.text,n.action]),[['Reporter contacted: By phone','contacted-reporter'],['Resolved','resolved']]);
+  await call('platform/public-reports/'+draftReport.id+'/update',{method:'POST',body:{action:'nope'},token:admin,status:422});
   // Individuals (no organisation) can't read the organisation view.
   await call('organization/public-reports',{token:alice.token,status:403});
   console.log('Phase 5 public report checks passed.');

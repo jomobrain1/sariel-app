@@ -143,8 +143,8 @@ export default defineRoutes(router=>{
         {$lookup:{from:Tenant.raw.collection.name,localField:'orgId',foreignField:'_id',pipeline:[{$project:{name:1}}],as:'org'}},
         {$project:{_id:0,reference:'$_id',level:1,category:1,note:1,createdAt:1,channel:1,
           version:'$incident.version',signals:{$map:{input:{$filter:{input:{$ifNull:['$incident.audit',[]]},as:'e',
-            cond:{$in:['$$e.action',['gallery-road','gallery-bridge','gallery-mountain','photo-link-spread','acknowledge','dispatch']]}}},
-            as:'e',in:{action:'$$e.action',at:'$$e.at',actorName:'$$e.actorName'}}},
+            cond:{$in:['$$e.action',['gallery-road','gallery-bridge','gallery-mountain','photo-link-spread','acknowledge','dispatch','contact','note','refer','resolve']]}}},
+            as:'e',in:{action:'$$e.action',at:'$$e.at',actorName:'$$e.actorName',note:'$$e.note'}}},
           account:{$ifNull:[{$arrayElemAt:['$account',0]},null]},
           organization:{$ifNull:[{$arrayElemAt:['$org.name',0]},null]},
           state:{$ifNull:['$incident.state',{$cond:['$active','pending','resolved']}]}}}
@@ -166,20 +166,29 @@ export default defineRoutes(router=>{
       return ctx.response.success({items:result.items,total,hasNext:page*perPage<total,levels:counts(result.levels),groups:counts(result.groups)});
     },{validate:{query:z.object({page:z.coerce.number().int().min(1).max(100000).default(1),search:z.string().trim().max(100).default(''),
       group:z.enum(['all','open','progress','resolved']).default('all'),level:z.coerce.number().int().refine(n=>[0,2,3,4,5].includes(n)).default(0)})}});
+    const version=z.number().int().nonnegative();
     const responseAction=z.discriminatedUnion('action',[
-      z.strictObject({action:z.literal('acknowledge'),version:z.number().int().nonnegative()}),
-      z.strictObject({action:z.literal('dispatch'),confirmed:z.literal(true),version:z.number().int().nonnegative()})
+      z.strictObject({action:z.literal('acknowledge'),version}),
+      z.strictObject({action:z.literal('dispatch'),confirmed:z.literal(true),version}),
+      // The platform team reached the person (or someone with them).
+      z.strictObject({action:z.literal('contact'),version,note:note.optional()}),
+      z.strictObject({action:z.literal('note'),version,note}),
+      z.strictObject({action:z.literal('resolve'),version,note}),
     ]);
     router.post('/:reference/response',async ctx=>{
-      const {action,version}=ctx.body as z.output<typeof responseAction>;
-      const filter={_id:String(ctx.params.reference),active:true,'incident.version':version};
+      const body=ctx.body as z.output<typeof responseAction>;
+      const filter={_id:String(ctx.params.reference),active:true,'incident.version':body.version};
       const event=await events().findOne(filter);
       if(!event?.incident) throw stale();
       const {audit}=event.incident;
-      if(audit.some(e=>e.action===action) || (action==='dispatch' && !audit.some(e=>e.action==='acknowledge'))) throw stale();
+      // Acknowledge and dispatch happen once, in order; contact, notes and resolving can happen at any point.
+      if(body.action==='acknowledge' && audit.some(e=>e.action==='acknowledge')) throw stale();
+      if(body.action==='dispatch' && (audit.some(e=>e.action==='dispatch') || !audit.some(e=>e.action==='acknowledge'))) throw stale();
       const actor=auth.user(ctx);
-      const update=await events().updateOne(filter,{$inc:{'incident.version':1},
-        $push:{'incident.audit':{at:new Date(),action,actor:actor.id,actorName:actor.name}}});
+      const entry={at:new Date(),action:body.action,actor:actor.id,actorName:actor.name,...('note' in body && body.note?{note:body.note}:{})};
+      const resolving=body.action==='resolve';
+      const update=await events().updateOne(filter,{$inc:{'incident.version':1},$push:{'incident.audit':entry},
+        ...(resolving?{$set:{'incident.state':'resolved' as const,active:false}}:{})});
       if(!update.modifiedCount) throw stale();
       return ctx.response.noContent();
     },{validate:{params:z.object({reference:z.string().regex(/^[a-f0-9]{64}$/)}),body:responseAction}});

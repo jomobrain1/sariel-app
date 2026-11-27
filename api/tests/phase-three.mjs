@@ -189,7 +189,15 @@ try {
   const reopened=(await call('individual/status/history',{token})).length;
   await activate('/jomo1',204);
   assert.equal((await call('individual/status/history',{token})).length,reopened);
-  await mongoose.connection.collection('sariel_safety_events').updateOne({_id:newest.reference},{$set:{active:false,'incident.state':'resolved'}});
+  // The platform team can record contact and notes, and resolve (a note is required).
+  await post(responsePath,{action:'contact',note:'Spoke to her by phone',version:newest.version+2},{token:admin,status:204});
+  await post(responsePath,{action:'note',note:'',version:newest.version+3},{token:admin,status:422});
+  await post(responsePath,{action:'resolve',version:newest.version+3},{token:admin,status:422});
+  await post(responsePath,{action:'resolve',note:'Safe with family',version:newest.version+3},{token:admin,status:204});
+  const closed=(await call('platform/incidents?group=resolved',{token:admin})).items.find(i=>i.reference===newest.reference);
+  assert.equal(closed.state,'resolved');
+  assert.deepEqual(closed.signals.slice(-2).map(s=>[s.action,s.note]),[['contact','Spoke to her by phone'],['resolve','Safe with family']]);
+  await post(responsePath,{action:'note',note:'Late',version:newest.version+4},{token:admin,status:409});
   const fresh=await post('auth/safety/activate',{...galleryToken,gallery:true});
   assert.notEqual(fresh.edition,edition);
   assert.equal((await call('individual/status/history',{token})).length,reopened+1);

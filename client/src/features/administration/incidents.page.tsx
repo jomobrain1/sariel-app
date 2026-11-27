@@ -34,27 +34,43 @@ function CreateIncident({done}:{done:()=>void}) {
 
 const signalLabels:Record<string,string>={
   'gallery-road':'Help still needed','photo-link-spread':'Report link opened by 3+ people','gallery-bridge':'Situation worsening','gallery-mountain':'Immediate danger',
-  acknowledge:'Report acknowledged',dispatch:'Dispatch confirmed'
+  acknowledge:'Report acknowledged',dispatch:'Dispatch confirmed',contact:'Person contacted',note:'Note added',refer:'Referred',resolve:'Resolved'
 };
+type Command={action:'acknowledge'}|{action:'dispatch';confirmed:true}|{action:'contact';note?:string}|{action:'note';note:string}|{action:'resolve';note:string};
 function ResponsePanel({item,refresh}:{item:PlatformIncident;refresh:()=>Promise<unknown>}){
   const [send,result]=configApi.useRespondToIncidentMutation();
   const [confirmed,setConfirmed]=useState(false);
+  const [note,setNote]=useState('');
   const seen=item.signals.some(s=>s.action==='acknowledge');
   const dispatched=item.signals.some(s=>s.action==='dispatch');
-  async function respond(){
+  const open=item.state!=='resolved' && item.version!==undefined;
+  const text=note.trim();
+  async function run(command:Command){
     if(item.version===undefined)return;
-    try{
-      await send({reference:item.reference,version:item.version,...(seen?{action:'dispatch' as const,confirmed:true as const}:{action:'acknowledge' as const})}).unwrap();
-    }catch{/* Display the mutation error below and refresh concurrent updates. */}
+    try{ await send({reference:item.reference,version:item.version,...command}).unwrap(); setNote(''); setConfirmed(false); }
+    catch{/* Shown below; refresh picks up concurrent changes. */}
     await refresh();
-    setConfirmed(false);
   }
+  const actorOf=(s:PlatformIncident['signals'][number])=>s.actorName || (s.action.startsWith('gallery-')||s.action==='photo-link-spread'?'Reporting link':'Responder');
   return <section className="incident-response"><h3>Response timeline</h3>
-    {item.signals.length ? <ol>{item.signals.map((s,i)=><li key={i}><strong>{signalLabels[s.action]}</strong><small>{s.actorName || (s.action.startsWith('gallery-')||s.action==='photo-link-spread'?'Reporting link':'Responder')} · {timestamp.format(new Date(s.at))}</small></li>)}</ol> : <p>Awaiting a response.</p>}
-    {item.state!=='resolved' && !dispatched && item.version!==undefined && <>
-      {seen && <label><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> I have confirmed a responder is on the way.</label>}
-      <button className="incident-primary" disabled={result.isLoading || (seen && !confirmed)} onClick={()=>void respond()}>{seen?'Confirm dispatch':'Acknowledge report'}</button></>}
-    {result.isError && <p role="alert">Response could not be saved. Review the latest incident and try again.</p>}
+    {item.signals.length ? <ol>{item.signals.map((s,i)=><li key={i}><strong>{signalLabels[s.action]??s.action}</strong>{s.note && <p>{s.note}</p>}<small>{actorOf(s)} · {timestamp.format(new Date(s.at))}</small></li>)}</ol> : <p>Awaiting a response.</p>}
+    {open && <div className="incident-act">
+      <h3>Actions</h3>
+      <div className="incident-act-row">
+        {!seen && <button className="incident-primary" disabled={result.isLoading} onClick={()=>void run({action:'acknowledge'})}>Acknowledge report</button>}
+        <button className="incident-secondary" disabled={result.isLoading} onClick={()=>void run({action:'contact',...(text?{note:text}:{})})}>Person contacted</button>
+      </div>
+      {seen && !dispatched && <div className="incident-act-row">
+        <label className="incident-check"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> A responder is on the way</label>
+        <button className="incident-primary" disabled={result.isLoading || !confirmed} onClick={()=>void run({action:'dispatch',confirmed:true})}>Confirm dispatch</button></div>}
+      <label className="incident-note">Note<textarea rows={3} maxLength={1500} value={note} onChange={e=>setNote(e.target.value)} placeholder="Who you spoke to, what was done, what happens next…"/></label>
+      <div className="incident-act-row">
+        <button className="incident-secondary" disabled={result.isLoading || !text} onClick={()=>void run({action:'note',note:text})}>Add note</button>
+        <button className="incident-resolve" disabled={result.isLoading || !text} onClick={()=>{ if(confirm('Resolve this incident? It will close for everyone handling it.')) void run({action:'resolve',note:text}); }}>Resolve with note</button>
+      </div>
+      <small>Write a note first to resolve. “Person contacted” saves the note with it if you write one.</small>
+    </div>}
+    {result.isError && <p role="alert">The action couldn’t be saved. The incident may have changed; review it and try again.</p>}
   </section>;
 }
 export function PlatformIncidents(){

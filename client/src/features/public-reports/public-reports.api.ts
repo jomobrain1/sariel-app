@@ -1,10 +1,11 @@
 import { tilcayoApi } from '../../app/api';
 
+export type ReportAction = 'contacted-reporter' | 'referred' | 'resolved';
 export type PublicReportConfig = { uploads: boolean; maxFiles: number; image: { extensions: string[]; maxBytes: number }; video: { extensions: string[]; maxBytes: number } };
 export type UploadAuthorization = { publicId: string; uploadUrl: string; fields: Record<string, string | number | boolean>; kind: 'image' | 'video' };
 export type PublicReport = {
   id: string; status: 'submitted' | 'reviewing' | 'closed'; description: string; country: string; place: string | null; urgency: 'urgent' | 'soon' | 'information';
-  contact: string | null; submittedAt: string; notes: { at: string; byName: string; text: string }[];
+  contact: string | null; submittedAt: string; notes: { at: string; byName: string; text: string; action?: ReportAction | null }[];
   media: { kind: 'image' | 'video'; format?: string | null; bytes?: number; url?: string | null; expiresAt?: string | null }[];
 };
 
@@ -22,7 +23,7 @@ export const publicReportsApi = api.injectEndpoints({ endpoints: b => ({
   // Platform administrators
   adminPublicReports: b.query<{ data: PublicReport[] }, string>({ query: status => '/platform/public-reports?status=' + status, providesTags: ['PublicReports'] }),
   adminPublicReport: b.query<{ data: PublicReport }, string>({ query: id => '/platform/public-reports/' + id, providesTags: (_r, _e, id) => [{ type: 'PublicReport', id }] }),
-  updatePublicReport: b.mutation<unknown, { id: string; status?: string; note?: string }>({
+  updatePublicReport: b.mutation<unknown, { id: string; status?: string; note?: string; action?: ReportAction }>({
     query: ({ id, ...body }) => ({ url: `/platform/public-reports/${id}/update`, method: 'POST', body }), invalidatesTags: (_r, _e, { id }) => ['PublicReports', { type: 'PublicReport', id }],
   }),
   // Approved organisations

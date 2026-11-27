@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PublicReportDetail } from './report-detail';
 import { statusLabel, urgencyLabel } from './labels';
-import { publicReportsApi } from './public-reports.api';
+import { publicReportsApi, type ReportAction } from './public-reports.api';
 import './public-reports.css';
 
 const when = (value: string) => new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -31,13 +31,30 @@ function List({ scope }: { scope: 'admin' | 'org' }) {
 function AdminDetail({ id }: { id: string }) {
   const report = publicReportsApi.useAdminPublicReportQuery(id);
   const [update, updating] = publicReportsApi.useUpdatePublicReportMutation();
+  const [detail, setDetail] = useState('');
+  const [failed, setFailed] = useState(false);
   const data = report.currentData?.data;
   if (!data) return <p role="status" className="pr-muted">Loading…</p>;
-  return <PublicReportDetail report={data} onNote={note => update({ id, note }).unwrap()} actions={<div className="pr-actions">
-    {data.status !== 'reviewing' && <button className="pr-primary" disabled={updating.isLoading} onClick={() => void update({ id, status: 'reviewing' })}>Mark reviewing</button>}
-    {data.status !== 'closed' && <button className="pr-ghost" disabled={updating.isLoading} onClick={() => void update({ id, status: 'closed' })}>Close</button>}
-    {data.status === 'closed' && <button className="pr-ghost" disabled={updating.isLoading} onClick={() => void update({ id, status: 'submitted' })}>Reopen</button>}
-  </div>} />;
+  const busy = updating.isLoading;
+  const text = detail.trim();
+  async function act(body: { action?: ReportAction; status?: string }) {
+    setFailed(false);
+    try { await update({ id, ...body, ...(text && body.action ? { note: text } : {}) }).unwrap(); setDetail(''); }
+    catch { setFailed(true); }
+  }
+  const closed = data.status === 'closed';
+  return <PublicReportDetail report={data} onNote={note => update({ id, note }).unwrap()} actions={<section className="pr-act">
+    <h3>Actions</h3>
+    {closed ? <div className="pr-actions"><button className="pr-ghost" disabled={busy} onClick={() => void act({ status: 'submitted' })}>Reopen</button></div> : <>
+      <input className="pr-act-detail" maxLength={1500} value={detail} onChange={e => setDetail(e.target.value)} placeholder="Details for the action (optional), e.g. spoke to them by phone" aria-label="Action details" />
+      <div className="pr-actions">
+        {data.status === 'submitted' && <button className="pr-ghost" disabled={busy} onClick={() => void act({ status: 'reviewing' })}>Start review</button>}
+        <button className="pr-ghost" disabled={busy || !data.contact} title={data.contact ? undefined : 'The reporter left no contact'} onClick={() => void act({ action: 'contacted-reporter' })}>Contacted reporter</button>
+        <button className="pr-ghost" disabled={busy} onClick={() => void act({ action: 'referred' })}>Referred for help</button>
+        <button className="pr-resolve" disabled={busy} onClick={() => { if (confirm('Resolve and close this report?')) void act({ action: 'resolved' }); }}>Resolve</button>
+      </div></>}
+    {failed && <p role="alert" className="pr-error">Couldn’t save that. Try again.</p>}
+  </section>} />;
 }
 
 function OrgDetail({ id }: { id: string }) {

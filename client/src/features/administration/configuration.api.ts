@@ -3,7 +3,7 @@ export type Value = Record<string, unknown>;
 export type RecordData = {revision:number; value:Value};
 export interface PlatformIncident {
   version?:number;
-  signals:{action:string;at:string;actorName?:string}[];
+  signals:{action:string;at:string;actorName?:string;note?:string}[];
   reference:string; category:string; note?:string; level:number; createdAt:string; channel:'account'|'gateway'|'welfare'|'image';
   state:'pending'|'assigned'|'acknowledged'|'resolved'; organization:string|null;
   account:{name:string;email:string}|null;
@@ -11,7 +11,7 @@ export interface PlatformIncident {
 export const configApi = tilcayoApi.injectEndpoints({endpoints: b => ({
   configuration:b.query<{data:RecordData|null},string>({query:path => '/sariel/'+path}),
   saveConfiguration:b.mutation<unknown,{path:string;body:RecordData}>({query:({path,body}) => ({url:'/sariel/'+path,method:'PUT',body})}),
-  respondToIncident:b.mutation<unknown,{reference:string;version:number;action:'acknowledge'|'dispatch';confirmed?:true}>({
+  respondToIncident:b.mutation<unknown,{reference:string;version:number;action:'acknowledge'|'dispatch'|'contact'|'note'|'resolve';confirmed?:true;note?:string}>({
     query:({reference,...body})=>({url:'/platform/incidents/'+reference+'/response',method:'POST',body})
   }),
   platformIncidents:b.query<{data:{items:PlatformIncident[];hasNext:boolean;total:number;levels:Record<string,number>;groups:Record<string,number>}}, {page:number;search:string;level:number;group:string}>({

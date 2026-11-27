@@ -14,11 +14,18 @@ import { storage, storageConfigured } from '../storage.js';
 // authenticated delivery, so they can only be viewed through short-lived signed links.
 export const MAX_FILES = 3;
 type Status = 'draft' | 'submitted' | 'reviewing' | 'closed';
+// Reviewer actions: each records a timeline entry and moves the report along.
+const reportActions = {
+  'contacted-reporter':{label:'Reporter contacted', status:'reviewing'},
+  referred:{label:'Referred for help', status:'reviewing'},
+  resolved:{label:'Resolved', status:'closed'},
+} as const;
+type ReportAction = keyof typeof reportActions;
 interface Media { publicId:string; resourceType:string; deliveryType:string; bytes:number; format?:string; kind:'image'|'video'; uploadedAt:Date }
 interface PublicReport {
   _id:string; tokenHash:string; status:Status; description:string; country:string; place?:string; urgency:'urgent'|'soon'|'information';
   contact?:string; media:Media[]; pendingUploads:string[]; createdAt:Date; submittedAt:Date|null;
-  notes:{at:Date; by:string; byName:string; text:string; tenant?:string}[];
+  notes:{at:Date; by:string; byName:string; text:string; tenant?:string; action?:ReportAction}[];
 }
 const reports = () => mongoose.connection.collection<PublicReport>('sariel_public_reports');
 let indexed: Promise<unknown> | undefined;
@@ -42,7 +49,7 @@ async function draft(id:string, token:string) {
 
 function view(r:PublicReport, withMedia:boolean) {
   return {id:r._id, status:r.status, description:r.description, country:r.country, place:r.place ?? null, urgency:r.urgency,
-    contact:r.contact ?? null, submittedAt:r.submittedAt, notes:r.notes.map(n => ({at:n.at, byName:n.byName, text:n.text})),
+    contact:r.contact ?? null, submittedAt:r.submittedAt, notes:r.notes.map(n => ({at:n.at, byName:n.byName, text:n.text, action:n.action ?? null})),
     media:withMedia ? r.media.map(m => ({kind:m.kind, format:m.format ?? null, bytes:m.bytes,
       ...(storageConfigured() ? storage.getDownloadUrl(m, {expiresInSeconds:600}) : {url:null, expiresAt:null})})) : r.media.map(m => ({kind:m.kind}))};
 }
@@ -136,14 +143,17 @@ export default defineRoutes(router => {
     }, {validate:{params}});
     router.post('/:id/update', async ctx => {
       const user = auth.user(ctx);
-      const {status, note} = ctx.body as {status?:Status; note?:string};
+      const {status, note, action} = ctx.body as {status?:Status; note?:string; action?:ReportAction};
+      const step = action ? reportActions[action] : null;
+      const text = step ? (note ? `${step.label}: ${note}` : step.label) : note;
       const result = await reports().updateOne({_id:String(ctx.params.id), status:{$ne:'draft'}}, {
-        ...(status ? {$set:{status}} : {}),
-        ...(note ? {$push:{notes:{at:new Date(), by:user.id, byName:user.name, text:note}}} : {})});
+        ...(step || status ? {$set:{status:step?.status ?? status!}} : {}),
+        ...(text ? {$push:{notes:{at:new Date(), by:user.id, byName:user.name, text, ...(action ? {action} : {})}}} : {})});
       if (!result.matchedCount) throw notFound();
       return ctx.response.noContent();
-    }, {validate:{params, body:z.strictObject({status:z.enum(['reviewing', 'closed', 'submitted']).optional(), note:z.string().trim().min(1).max(1500).optional()})
-      .refine(b => b.status || b.note, 'Nothing to update.')}});
+    }, {validate:{params, body:z.strictObject({status:z.enum(['reviewing', 'closed', 'submitted']).optional(), note:z.string().trim().min(1).max(1500).optional(),
+      action:z.enum(Object.keys(reportActions) as [ReportAction, ...ReportAction[]]).optional()})
+      .refine(b => b.status || b.note || b.action, 'Nothing to update.')}});
   });
 
   // Approved organisations: public reports from the countries they cover.

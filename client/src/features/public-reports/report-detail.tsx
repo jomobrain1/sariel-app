@@ -23,8 +23,8 @@ export function PublicReportDetail({ report, onNote, actions }: { report: Public
       : <div key={i} className="pr-media-off">{m.kind === 'video' ? 'Video' : 'Photo'} unavailable</div>)}</div>}
     {actions}
     <div className="pr-notes">
-      <h3>Notes</h3>
-      {report.notes.length ? <ol>{report.notes.map((n, i) => <li key={i}><p>{n.text}</p><small>{n.byName} · {when(n.at)}</small></li>)}</ol> : <p className="pr-muted">No notes yet.</p>}
+      <h3>Timeline &amp; notes</h3>
+      {report.notes.length ? <ol>{report.notes.map((n, i) => <li key={i} className={n.action ? 'is-action' : undefined}><p>{n.text}</p><small>{n.byName} · {when(n.at)}</small></li>)}</ol> : <p className="pr-muted">No notes yet.</p>}
       <textarea rows={2} maxLength={1500} value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note: who was contacted, what was done…" aria-label="Note" />
       <button className="pr-ghost" disabled={busy || !note.trim()} onClick={async () => { setBusy(true); try { await onNote(note.trim()); setNote(''); } finally { setBusy(false); } }}>Add note</button>
     </div>
