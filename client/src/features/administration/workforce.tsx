@@ -9,13 +9,13 @@ import { actionError } from '../admin/action-error';
 
 const defaults=['Response manager','Response officer','Dispatcher','Welfare officer','Legal officer'].map(name=>({name,permissions:['Response manager','Dispatcher'].includes(name)?['scope.read','routing.read','incidents.respond','incidents.manage']:name==='Response officer'?['scope.read','routing.read','incidents.respond']:['scope.read']}));
 const api=tilcayoApi.injectEndpoints({endpoints:b=>({
-  invite:b.mutation<{data:{token:string}},{id:string;email:string;role:string}>({query:({id,...body})=>({url:'/sariel/admin/invitations/'+id,method:'POST',body})}),
+  inviteStaff:b.mutation<{data:{token:string}},{id:string;email:string;role:string}>({query:({id,...body})=>({url:'/sariel/admin/invitations/'+id,method:'POST',body})}),
   accept:b.mutation<unknown,string>({query:token=>({url:'/sariel/staff/accept',method:'POST',body:{token}})}),
   changeStaff:b.mutation<unknown,{id:string;member:string;role:string|null}>({query:({id,member,role})=>({url:'/sariel/admin/staff/'+id+'/'+member,method:'PUT',body:{role}})}),
   workspace:b.query<{data:Record<string,unknown>},string>({query:()=>'/sariel/staff/workspace'}),
 })});
 export function Workforce({id}:{id:string}){
-  const [invite]=api.useInviteMutation(), [change]=api.useChangeStaffMutation();
+  const [invite]=api.useInviteStaffMutation(), [change]=api.useChangeStaffMutation();
   const members=useGetTenantMembersQuery(id);
   const {data}=configApi.useConfigurationQuery('admin/roles/'+id);
   const options=(data?.data?.value.roles as typeof defaults|undefined)??defaults;
