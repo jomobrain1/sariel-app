@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useSearchParams } from 'react-router';
 import { Modal } from '@tilcayo/ui';
 import { useAuth } from '../../app/auth';
-import { apiStatus } from '../../lib/api-status';
+import { inviteError } from '../../lib/api-status';
 import { AccountIcon } from '../../components/account-icon';
 import { Toggle } from '../../components/toggle';
 import { labels } from '../safety/safety.api';
@@ -41,8 +41,7 @@ function InviteForm({ done }: { done: () => void }) {
       await invite({ email: String(form.get('email')).trim(), relationship: form.get('relationship') as Relationship, permissions }).unwrap();
       done();
     } catch (failure) {
-      const status = apiStatus(failure);
-      setError(status === 409 ? 'This address is already in your circle.' : status === 422 ? 'Check the address. You can’t invite yourself.' : 'Couldn’t send the invite. Try again.');
+      setError(inviteError(failure));
     }
   }
   return <form className="circle-form" onSubmit={submit}>
