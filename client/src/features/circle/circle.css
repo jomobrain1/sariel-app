@@ -38,9 +38,15 @@
 .circle-empty p {margin:0;max-width:30ch}
 
 .circle-permissions {display:flex;flex-wrap:wrap;gap:8px}
-.circle-toggle {display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border:1px solid #c9d3cf;border-radius:999px;cursor:pointer;font-weight:600;font-size:.92rem}
-.circle-toggle:has(:checked) {border-color:#0f4d3f;background:var(--circle-soft);color:#0f4d3f}
-.circle-toggle input {accent-color:#0f4d3f;margin:0}
+.circle-permissions .circle-toggle {position:relative;display:inline-flex;flex-direction:row;align-items:center;gap:8px;min-height:40px;margin:0;padding:0 14px;border:1px solid transparent;border-radius:10px;background:#f1f6f3;color:#2b3b36;cursor:pointer;font-weight:600;font-size:.92rem;transition:background .15s,color .15s}
+.circle-permissions .circle-toggle:hover {background:#e4eee9}
+.circle-permissions .circle-toggle:has(:checked) {background:#0f4d3f;color:#fff}
+.circle-permissions .circle-toggle:has(:focus-visible) {outline:3px solid #25866f;outline-offset:2px}
+.circle-permissions .circle-toggle:has(:disabled) {opacity:.6;cursor:wait}
+/* The checkbox stays for keyboard and screen readers; a small mark shows the state. */
+.circle-permissions .circle-toggle input {position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.circle-permissions .circle-toggle span::before {content:"";display:inline-block;width:14px;height:14px;margin-right:8px;vertical-align:-2px;border:1.5px solid #9fb3ac;border-radius:4px;background:#fff center/10px no-repeat}
+.circle-permissions .circle-toggle:has(:checked) span::before {border-color:#fff;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.5l4.5-5' fill='none' stroke='%230f4d3f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
 
 .circle-banner {display:flex;align-items:center;flex-wrap:wrap;gap:14px;padding:18px 22px;border-radius:14px;background:#0f4d3f;color:#fff}
 .circle-banner .account-icon {width:24px;height:24px}
