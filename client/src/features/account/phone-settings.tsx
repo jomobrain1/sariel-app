@@ -38,7 +38,7 @@ export function PhoneSettings() {
       toast.success(`We sent a 6-digit code to ${pretty(number)}.`, 'Code sent');
     } catch (failure) {
       const message = apiStatus(failure) === 429 ? 'Too many codes requested. Wait a few minutes and try again.'
-        : apiStatus(failure) === 503 ? 'SMS couldn’t be sent right now. Check the number or try again later.' : apiMessage(failure, 'Couldn’t send the code. Try again.');
+        : apiMessage(failure, 'Couldn’t send the code. Try again.');
       setError(message); toast.error(message, 'Code not sent');
     }
   }

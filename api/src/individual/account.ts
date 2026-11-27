@@ -3,7 +3,7 @@ import { createHmac, randomInt } from 'node:crypto';
 import { createHttpError, defineRoutes, rateLimit, type Middleware } from '@tilcayo/core';
 import { z } from 'zod';
 import { auth } from '../auth.js';
-import { sendSms, smsConfigured } from '../notifications/sms.js';
+import { sendSms, smsConfigured, SmsError } from '../notifications/sms.js';
 import { sendEmail, smtpConfigured } from '../notifications/email.js';
 
 const personalHost: Middleware = (ctx, next) => {
@@ -52,7 +52,8 @@ export default defineRoutes(router => {
       const key=process.env.VERIFICATION_DELIVERY_TOKEN;
       // Without a delivery webhook, codes go out directly: SMS via Mobile Sasa, email via SMTP.
       const direct=body.channel==='phone'?smsConfigured():smtpConfigured();
-      if((!endpoint?.startsWith('https://') || !key) && !direct) throw createHttpError(503,'DELIVERY_UNAVAILABLE','Verification delivery is unavailable.');
+      if((!endpoint?.startsWith('https://') || !key) && !direct) throw createHttpError(503,'DELIVERY_UNAVAILABLE',body.channel==='phone'
+        ? 'SMS isn’t set up yet: an administrator needs to add MOBILESASA_TOKEN and MOBILESASA_SENDER_ID.' : 'Email isn’t set up yet: an administrator needs to add MAIL_USER and MAIL_PASS.');
       const code=String(randomInt(1_000_000)).padStart(6,'0');
       const challenge={target,digest:digest(user.id,body.channel,target,code),expires:new Date(Date.now()+600_000)};
       const path='challenges.'+body.channel;
@@ -64,9 +65,12 @@ export default defineRoutes(router => {
           if(!result.ok) throw new Error();
         } else if(body.channel==='phone') await sendSms(target,`Your Sariel verification code is ${code}. It expires in 10 minutes.`);
         else await sendEmail(target,'Your Sariel verification code',`Your Sariel verification code is ${code}. It expires in 10 minutes.`,'verify-'+user.id);
-      } catch {
+      } catch (error) {
         await accounts().updateOne({_id:user.id,[path+'.digest']:challenge.digest},{$unset:{[path]:''}});
-        throw createHttpError(503,'DELIVERY_UNAVAILABLE','Verification delivery failed.');
+        // Pass on the provider's reason (e.g. insufficient balance, unapproved recipient) so it can be fixed.
+        const reason=error instanceof SmsError ? error.message : '';
+        throw createHttpError(503,'DELIVERY_UNAVAILABLE',body.channel==='phone'
+          ? `The SMS couldn’t be sent${reason ? ` (${reason})` : ''}. Check the number and try again.` : 'The email couldn’t be sent. Try again.');
       }
       return ctx.response.noContent();
     },{middleware:[limiter],validate:{body:z.discriminatedUnion('channel',[
