@@ -1,5 +1,6 @@
 import { Workforce, RoutingSettings } from '../administration/workforce';
 import { OrganizationSettings } from '../administration/configuration';
+import { OrganizationAccess } from '../administration/org-access';
 import { useEffect, useState, type FormEvent } from 'react';
 import { ResourceLayout } from '@tilcayo/admin';
 import { Alert, Badge, Button, ConfirmDialog, FormField, Input, Modal, Table, CardsSkeleton, TableSkeleton } from '@tilcayo/ui';
@@ -41,13 +42,14 @@ function Members({ tenant }: { tenant: Tenant }) {
   </div>;
 }
 function OrganizationConfiguration({id}: {id: string}) {
-  const [section, setSection] = useState<'Scope' | 'Staff' | 'Routing'>('Scope');
+  const [section, setSection] = useState<'Scope' | 'Access' | 'Staff' | 'Routing'>('Scope');
   return <div className="tl-stack">
     <div className="tl-admin-tabs" role="group" aria-label="Organization configuration">
-      {(['Scope', 'Staff', 'Routing'] as const).map(name =>
+      {(['Scope', 'Access', 'Staff', 'Routing'] as const).map(name =>
         <Button key={name} variant="ghost" aria-pressed={section === name} onClick={() => setSection(name)}>{name}</Button>)}
     </div>
     {section === 'Scope' && <OrganizationSettings id={id}/>}
+    {section === 'Access' && <OrganizationAccess id={id}/>}
     {section === 'Staff' && <Workforce id={id}/>}
     {section === 'Routing' && <RoutingSettings id={id}/>}
   </div>;

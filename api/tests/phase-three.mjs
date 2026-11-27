@@ -60,6 +60,15 @@ try {
   const scope={category:'Government',verification:'verified',countries:['KE'],jurisdictions:['Kenya'],incidentCategories:['welfare'],capabilities:['welfare'],officialEmail:email,officialPhone:'demo',operatingHours:'Always',timeZone:'Africa/Nairobi',available:true,preferredLanguage:'English'};
   const config=(path,value)=>put('sariel/admin/'+path,{value,revision:0},{token:admin});
   for(const tenant of [org,other]) await config('organization/'+tenant.id,scope);
+  // Verified isn't enough: incident access must also be granted by the platform administrator.
+  assert.deepEqual(await call('incidents/access',firstStaff),{verified:true,enabled:false,allowed:false,changedAt:null,responder:true,manager:true});
+  await call('incidents/',{...firstStaff,status:403});
+  await call('sariel/admin/organization/'+org.id+'/access',{token:firstStaff.token,host:firstStaff.host,status:403});
+  for(const tenant of [org,other]){
+    const granted=await put('sariel/admin/organization/'+tenant.id+'/access',{incidentAccess:true},{token:admin});
+    assert.equal(granted.allowed,true);
+  }
+  assert.equal((await call('incidents/access',firstStaff)).allowed,true);
   const rule={name:'Demo rule',priority:1,countries:['KE'],nationalities:['KE'],incidentCategories:['welfare'],capabilities:['welfare'],severities:['high'],availableOnly:true,referralTenantIds:[other.id],authorization:'explicit-consent',disclose:['severity']};
   await config('routing/'+org.id,{rules:[rule]});
   await config('routing/'+other.id,{rules:[{...rule,priority:2,referralTenantIds:[]}]});
@@ -187,6 +196,10 @@ try {
   await activate('/jomo1',204);
   assert.equal((await call('individual/status/history',{token})).length,reopened+1);
   assert.deepEqual(await cover(),{edition:fresh.edition,cover:'valley'});
+  // Revoking incident access blocks the organisation immediately.
+  await put('sariel/admin/organization/'+org.id+'/access',{incidentAccess:false},{token:admin});
+  await call('incidents/',{...firstStaff,status:403});
+  assert.equal((await call('incidents/access',firstStaff)).allowed,false);
   console.log('Phase 3 HTTP integration checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));

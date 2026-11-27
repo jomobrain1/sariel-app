@@ -4,6 +4,7 @@ import { Config, profile } from '../administration/config.js';
 import { routing } from '../administration/policies.js';
 import { profiles } from '../individual/profile.js';
 import type { StatusEvent } from '../individual/status.js';
+import { incidentAccess } from './access.js';
 
 export type AuditEntry={at:Date; action:string; tenant?:string; actor?:string; actorName?:string; requestId?:string; note?:string};
 export type Incident={
@@ -23,7 +24,7 @@ export async function eligible(event:StatusEvent, onlyTenant?:string){
     const [a,b]=await Promise.all([Config.findById('organization/'+tenant),Config.findById('routing/'+tenant)]);
     const scope=profile.safeParse(a?.value);
     const rules=routing.safeParse(b?.value);
-    if(!scope.success||!rules.success||scope.data.verification!=='verified'||!scope.data.available
+    if(!scope.success||!rules.success||scope.data.verification!=='verified'||!scope.data.available||!(await incidentAccess(tenant)).enabled
       ||!scope.data.countries.includes(country)||!scope.data.incidentCategories.includes(event.category)) continue;
     for(const rule of rules.data.rules){
       if(!rule.countries.includes(country)||!rule.incidentCategories.includes(event.category)
