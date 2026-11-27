@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
 import { registerJob } from '../jobs/worker.js';
 import { render, type NotificationKind } from './templates.js';
+import { permanentSmtpError, sendEmail, smtpConfigured } from './email.js';
 
 export type Channel = 'email' | 'sms';
 export interface Notification {
@@ -86,8 +87,15 @@ async function sendThroughProvider(delivery:Delivery): Promise<Outcome> {
   let url: URL | undefined;
   try { url = endpoint ? new URL(endpoint) : undefined; } catch { url = undefined; }
   const local = url && (url.hostname === '127.0.0.1' || url.hostname === 'localhost');
-  if (!url || !key || (url.protocol !== 'https:' && !(local && url.protocol === 'http:')))
-    return {ok:false, retry:false, error:'Delivery provider not configured.'};
+  const webhook = !!url && !!key && (url.protocol === 'https:' || (!!local && url.protocol === 'http:'));
+  // Without a delivery webhook, email goes straight out over SMTP (MAIL_* settings).
+  if (!webhook && delivery.channel === 'email' && smtpConfigured()) {
+    try { await sendEmail(delivery.target, delivery.subject, delivery.text, delivery._id); return {ok:true}; }
+    catch (error) {
+      return {ok:false, retry:!permanentSmtpError(error), error:'Email failed: ' + (error instanceof Error ? error.message.slice(0, 160) : 'unknown error')};
+    }
+  }
+  if (!webhook || !url) return {ok:false, retry:false, error:delivery.channel === 'sms' ? 'SMS provider not configured.' : 'Email is not configured (set MAIL_USER and MAIL_PASS).'};
   try {
     const response = await fetch(url, {method:'POST', redirect:'error', signal:AbortSignal.timeout(10_000),
       headers:{'Content-Type':'application/json', Authorization:'Bearer ' + key, 'Idempotency-Key':delivery._id},
