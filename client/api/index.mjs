@@ -49,6 +49,8 @@ export default async function sariel(req, res) {
     res.setHeader('Content-Type', 'application/json');
     return res.end(JSON.stringify({ success: false, message: 'Database unavailable. Check MONGODB_URI and Atlas network access.' }));
   }
+  // Shows which domain tenancy expects, so a mismatched TENANCY_BASE_DOMAIN is easy to spot.
+  res.setHeader('X-Sariel-Base-Domain', process.env.TENANCY_BASE_DOMAIN ?? '');
   if (req.url?.split('?')[0] === '/api/cron/jobs') return cron(req, res);
   return handler(req, res);
 }
