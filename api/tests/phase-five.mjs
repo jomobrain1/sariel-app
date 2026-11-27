@@ -412,9 +412,10 @@ try {
   assert(toBob,'email reached the SMTP server');
   assert.match(toBob.from,/sariel@example\.test/);
   // Danger alerts carry what the circle needs to act: who, level, time and note.
-  assert.match(toBob.body,/Subject: Sariel alert: Alice reported Serious danger/);
+  // The email is the in-app notification word for word: its title is the subject, its text the body.
+  assert.match(toBob.body,/Subject: Alice reported: Serious danger/);
   assert.match(toBob.body,/https:\/\/sariel\.example/);
-  assert.match(toBob.body,/Alice reported Serious danger at .+ UTC/);
+  assert.match(toBob.body,/Reported .+ UTC/);
   assert.match(toBob.body,/He took my phone/);
   assert.equal((await call('individual/notifications',{token:bob.token})).items.find(n=>n.kind==='circle-incident').deliveries[0].state,'sent');
   // One-tap link (gateway) reports alert the circle too.

@@ -51,6 +51,12 @@ async function contacts(recipient:string) {
  * Stores an in-app notification and queues email/SMS deliveries the recipient allows.
  * A dedupe key makes repeated calls for the same event a no-op.
  */
+/** Email and SMS say exactly what the in-app notification says: its title (the email subject) and its text. */
+export function externalCopy(message:{title:string; body:string}, channel:Channel) {
+  const body = message.body.trim();
+  return {subject:message.title, text:channel === 'email' ? (body || message.title) : (body ? `${message.title}. ${body}` : message.title).slice(0, 459)};
+}
+
 export async function notify(recipient:string, kind:NotificationKind, data:Record<string, string> = {}, dedupeKey?:string) {
   await ensureNotificationIndexes();
   const message = render(kind, data);
@@ -70,7 +76,7 @@ export async function notify(recipient:string, kind:NotificationKind, data:Recor
       const target = channel === 'email' ? reach.email : reach.phone;
       // Emergency alerts use every channel the person has set up; routine ones follow preferences.
       if (!reach.active || !target || (message.priority !== 'emergency' && !allowed[channel])) continue;
-      queue.push({_id:randomUUID(), notification:note._id, recipient, channel, target, subject:message.subject, text:message.text,
+      queue.push({_id:randomUUID(), notification:note._id, recipient, channel, target, ...externalCopy(message, channel),
         state:'queued', attempts:0, nextAttemptAt:now, lockedUntil:null, lastError:null, sentAt:null, history:[]});
     }
     if (queue.length) await deliveries().insertMany(queue);
