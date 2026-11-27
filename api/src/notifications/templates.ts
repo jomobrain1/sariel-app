@@ -2,7 +2,7 @@
 // inboxes must not reveal names, places or danger levels. Full detail is shown only in the app.
 export type NotificationKind =
   | 'circle-invite' | 'circle-accepted' | 'check-in-request' | 'circle-update'
-  | 'welfare-reminder' | 'welfare-concern' | 'welfare-resolved' | 'photo-report' | 'photo-link-spread' | 'incident-new';
+  | 'welfare-reminder' | 'welfare-concern' | 'welfare-resolved' | 'photo-report' | 'photo-link-spread' | 'incident-new' | 'circle-incident';
 
 export interface Rendered {
   title:string; body:string; link:string; priority:'normal'|'emergency';
@@ -32,6 +32,8 @@ export function render(kind:NotificationKind, data:Record<string, string>): Rend
     case 'photo-report': return {title:`${name} may need help`, body:`They sent a Sariel report photo. Their safety status has changed.${data.note ? ` They wrote: “${data.note}”.` : ''} Try contacting them now.`,
       link:'/circle', priority:'emergency', external:['email', 'sms'], subject:'Please check on someone in your Sariel circle', text:urgent};
     case 'photo-link-spread': return {title:`${name}’s report link was opened by several people`, body:'Their report photo link has now been opened by at least 3 different people. Please check on them.',
+      link:'/circle', priority:'emergency', external:['email', 'sms'], subject:'Please check on someone in your Sariel circle', text:urgent};
+    case 'circle-incident': return {title:`${name} reported: ${data.level ?? 'needs help'}`, body:`${data.note ? `They wrote: “${data.note}”. ` : ''}Try contacting them now.`,
       link:'/circle', priority:'emergency', external:['email', 'sms'], subject:'Please check on someone in your Sariel circle', text:urgent};
     case 'incident-new': return {title:`New incident: ${data.level ?? 'Report'}`, body:`${data.channel ?? 'Report'} · ${data.category ?? 'welfare'}${data.note ? ` · “${data.note}”` : ''}`,
       link:'/admin/incidents', priority:data.urgent === 'yes' ? 'emergency' : 'normal', external:['email'], subject:'A new incident needs attention in Sariel', text:'A new incident was reported in Sariel. Sign in to the admin console to review it.'};

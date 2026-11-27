@@ -27,12 +27,14 @@
     "@tilcayo/core": "^0.0.3",
     "jpeg-js": "^0.4.4",
     "mongoose": "^9.10.2",
+    "nodemailer": "^9.1.1",
     "pngjs": "^7.0.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@tilcayo/cli": "^0.0.4",
     "@types/node": "^26.6.3",
+    "@types/nodemailer": "^8.0.2",
     "@types/pngjs": "^6.0.5",
     "nodemon": "^3.1.14",
     "typescript": "^7.0.2"

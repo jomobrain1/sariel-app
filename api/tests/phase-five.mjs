@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { createServer, request } from 'node:http';
+import { createServer as createTcpServer } from 'node:net';
 import mongoose from 'mongoose';
 import { bootstrapTenancy } from '@tilcayo/auth';
 import { PNG } from 'pngjs';
@@ -375,6 +376,60 @@ try {
   await post('individual/status',{requestId:randomUUID(),level:1,category:'welfare'},{token:alice.token});
   assert.equal((await call('individual/notifications',{token:admin})).items.length,adminCount);
   console.log('Phase 5 superadmin notification checks passed.');
+
+  // ── Email delivery over SMTP ─────────────────────────────
+  const mails=[];let smtpPass='app-password-1234';
+  const smtp=createTcpServer(socket=>{
+    let data=false,buffer='',mail={};socket.write('220 fake.smtp ESMTP\r\n');
+    socket.on('data',chunk=>{buffer+=chunk.toString();let i;
+      while((i=buffer.indexOf('\r\n'))>=0){const line=buffer.slice(0,i);buffer=buffer.slice(i+2);
+        if(data){if(line==='.'){data=false;mails.push(mail);mail={};socket.write('250 OK queued\r\n');}else mail.body=(mail.body??'')+line+'\n';continue;}
+        const cmd=line.toUpperCase();
+        if(cmd.startsWith('EHLO')||cmd.startsWith('HELO'))socket.write('250-fake.smtp\r\n250-AUTH PLAIN LOGIN\r\n250 OK\r\n');
+        else if(cmd.startsWith('AUTH PLAIN')){const creds=Buffer.from(line.split(' ')[2]??'','base64').toString().split('\0');
+          socket.write(creds[2]===smtpPass?'235 Authenticated\r\n':'535 Authentication failed\r\n');}
+        else if(cmd.startsWith('MAIL FROM')){mail.from=line;socket.write('250 OK\r\n');}
+        else if(cmd.startsWith('RCPT TO')){mail.to=line;socket.write('250 OK\r\n');}
+        else if(cmd==='DATA'){data=true;socket.write('354 Go ahead\r\n');}
+        else if(cmd==='QUIT'){socket.write('221 Bye\r\n');socket.end();}
+        else if(cmd==='RSET'||cmd==='NOOP')socket.write('250 OK\r\n');
+        else socket.write('502 Not implemented\r\n');}});
+  });
+  smtp.listen(0);await once(smtp,'listening');
+  Object.assign(process.env,{MAIL_USER:'sariel@example.test',MAIL_PASS:'app-password-1234',MAIL_HOST:'127.0.0.1',MAIL_PORT:String(smtp.address().port),MAIL_SECURE:'false',MAIL_FROM_NAME:'SarielApp',APP_URL:'https://sariel.example'});
+  delete process.env.NOTIFICATION_DELIVERY_URL;
+  const {deliveryCycle}=await import('../dist/notifications/engine.js');
+  await mongoose.connection.collection('sariel_notification_deliveries').updateMany({state:'queued'},{$set:{state:'skipped'}});
+  // Alice reports danger in the app: Bob (in her circle) gets an urgent alert and an email.
+  await mongoose.connection.collection('sariel_safety_events').updateMany({owner:alice.id},{$set:{active:false}});
+  await post('individual/status',{requestId:randomUUID(),level:4,category:'harassment',note:'He took my phone'},{token:alice.token});
+  const bobAlert2=(await call('individual/notifications',{token:bob.token})).items.find(n=>n.kind==='circle-incident');
+  assert.equal(bobAlert2.title,'Alice reported: Serious danger');assert.equal(bobAlert2.priority,'emergency');
+  assert.match(bobAlert2.body,/He took my phone/);
+  assert.deepEqual(bobAlert2.deliveries.map(d=>[d.channel,d.state]),[['email','queued']]);
+  await deliveryCycle(new Date());
+  const toBob=mails.find(m=>m.to.includes(bob.email));
+  assert(toBob,'email reached the SMTP server');
+  assert.match(toBob.from,/sariel@example\.test/);
+  assert.match(toBob.body,/Subject: Please check on someone in your Sariel circle/);
+  assert.match(toBob.body,/https:\/\/sariel\.example/);
+  assert(!/Alice|harassment|phone/.test(toBob.body),'email text stays discreet');
+  assert.equal((await call('individual/notifications',{token:bob.token})).items.find(n=>n.kind==='circle-incident').deliveries[0].state,'sent');
+  // One-tap link (gateway) reports stay hidden from the circle.
+  const circleAlerts=(await call('individual/notifications',{token:bob.token})).items.filter(n=>n.kind==='circle-incident').length;
+  await post('individual/incident-link',{alias:'alicemail7',level:4,category:'welfare'},{token:alice.token,status:201});
+  await post('auth/safety/activate',{token:'alicemail7'},{status:204});
+  assert.equal((await call('individual/notifications',{token:bob.token})).items.filter(n=>n.kind==='circle-incident').length,circleAlerts);
+  // A wrong SMTP password fails without endless retries.
+  smtpPass='rotated';
+  await mongoose.connection.collection('sariel_safety_events').updateMany({owner:alice.id},{$set:{active:false}});
+  await post('individual/status',{requestId:randomUUID(),level:3,category:'welfare'},{token:alice.token});
+  await deliveryCycle(new Date(Date.now()+1000));
+  const failed=(await call('individual/notifications',{token:bob.token})).items.find(n=>n.kind==='circle-incident'&&n.title.includes('Safety concern'));
+  assert.equal(failed.deliveries[0].state,'skipped');assert.match(failed.deliveries[0].lastError,/Email failed/);
+  for(const k of ['MAIL_USER','MAIL_PASS','MAIL_HOST','MAIL_PORT','MAIL_SECURE'])delete process.env[k];
+  smtp.close();
+  console.log('Phase 5 email delivery checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
   fake.close();

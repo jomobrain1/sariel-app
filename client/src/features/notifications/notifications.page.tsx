@@ -39,7 +39,7 @@ function Preferences() {
     <h2>How we reach you</h2>
     <p>In-app notifications are always on. Urgent alerts about your circle use every channel you’ve set up.</p>
     {value && <div className="note-toggles">
-      <label><input type="checkbox" checked={value.email} disabled={saving.isLoading} onChange={e => void save({ ...value, email: e.target.checked })} /><span><strong>Email</strong><small>Invites, check-in requests and reminders</small></span></label>
+      <label><input type="checkbox" checked={value.email} disabled={saving.isLoading} onChange={e => void save({ ...value, email: e.target.checked })} /><span><strong>Email</strong><small>Invites, check-in requests and reminders. Urgent alerts about your circle are always emailed.</small></span></label>
       <label><input type="checkbox" checked={value.sms} disabled={saving.isLoading} onChange={e => void save({ ...value, sms: e.target.checked })} /><span><strong>SMS</strong><small>Check-in requests and reminders. Needs a verified phone number.</small></span></label>
     </div>}
     <p className="note-hint">Email and text messages never include names, places or danger levels.</p>

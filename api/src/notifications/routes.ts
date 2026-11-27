@@ -2,7 +2,7 @@ import { createHttpError, defineRoutes } from '@tilcayo/core';
 import { z } from 'zod';
 import { auth } from '../auth.js';
 import { individual } from '../individual/account.js';
-import { onCircleEvent, recipients } from '../circle/members.js';
+import { names, onCircleEvent, recipients } from '../circle/members.js';
 import { defaultPreferences, deliveries, ensureNotificationIndexes, notifications, notify, preferences } from './engine.js';
 import mongoose from 'mongoose';
 import { onIncidentCreated } from '../individual/status.js';
@@ -16,6 +16,15 @@ onIncidentCreated(async event => {
     level:levelNames[event.level] ?? 'Report', channel:channelNames[event.channel] ?? 'Report', category:event.category,
     ...(event.note ? {note:event.note.slice(0, 160)} : {}), urgent:event.level >= 4 ? 'yes' : 'no',
   }, 'incident-new:' + event._id)));
+});
+// When someone reports danger in the app, their circle (members with status access) is alerted too.
+// Discreet one-tap link reports stay hidden from the circle; report photos alert it separately.
+onIncidentCreated(async event => {
+  if (event.channel !== 'account') return;
+  const name = (await names([event.owner])).get(event.owner) ?? 'Someone';
+  await Promise.all((await recipients(event.owner, 'status')).map(member => notify(member, 'circle-incident', {
+    name, level:levelNames[event.level] ?? 'needs help', ...(event.note ? {note:event.note.slice(0, 200)} : {}),
+  }, 'circle-incident:' + event._id)));
 });
 
 // Circle activity becomes notifications. Removal and leaving are deliberately silent.
