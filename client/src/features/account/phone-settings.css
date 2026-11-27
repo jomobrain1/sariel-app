@@ -1,0 +1,13 @@
+.phone-settings h2 {display:flex;align-items:center;gap:8px}
+.phone-settings h2 .account-icon {width:22px;height:22px}
+.phone-intro {margin:-8px 0 16px;color:#5b6b66;line-height:1.5}
+.phone-current {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.phone-number {display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:1.1rem;font-weight:700;letter-spacing:.01em}
+.phone-badge {padding:3px 9px;border-radius:999px;background:#e3f4ea;color:#1f7a4d;font-size:.78rem;font-weight:700}
+.phone-actions {display:flex;flex-wrap:wrap;gap:8px}
+.phone-remove {color:#b3261e}
+.phone-form {display:grid;gap:8px;max-width:420px}
+.phone-code {letter-spacing:.4em;font-size:1.2rem;font-variant-numeric:tabular-nums}
+.phone-muted {color:#5b6b66}
+.phone-form .phone-actions {margin-top:6px}
+.sariel-admin-phone {margin-top:24px}

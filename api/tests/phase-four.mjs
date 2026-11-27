@@ -271,6 +271,10 @@ try {
   // After an incident is resolved, the person is Confirmed safe again (not Unknown).
   await mongoose.connection.collection('sariel_safety_events').updateMany({owner:tom.id},{$set:{active:false}});
   assert.equal((await call('individual/status',{token:tom.token})).status,'CONFIRMED_SAFE');
+  // A confirmed phone number can be removed; SMS stops until a new one is confirmed.
+  assert.equal((await call('individual/account',{token:kim.token})).verifiedPhone,'+254700000002');
+  await call('individual/phone',{method:'DELETE',token:kim.token,status:204});
+  assert.equal((await call('individual/account',{token:kim.token})).verifiedPhone,null);
   console.log('Phase 4 status and danger alert checks passed.');
 
   // ── Welfare monitoring ───────────────────────────────────

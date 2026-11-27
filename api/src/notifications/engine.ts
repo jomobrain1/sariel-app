@@ -12,6 +12,8 @@ export interface Notification {
 }
 export interface Delivery {
   _id:string; notification:string; recipient:string; channel:Channel; target:string; subject:string; text:string;
+  /** App page the email's button opens (e.g. /circle). */
+  link?:string;
   state:'queued'|'sending'|'sent'|'failed'|'skipped'; attempts:number; nextAttemptAt:Date; lockedUntil:Date|null;
   lastError:string|null; sentAt:Date|null; history:{at:Date; outcome:'sent'|'failed'|'skipped'; error?:string}[];
 }
@@ -76,7 +78,7 @@ export async function notify(recipient:string, kind:NotificationKind, data:Recor
       const target = channel === 'email' ? reach.email : reach.phone;
       // Emergency alerts use every channel the person has set up; routine ones follow preferences.
       if (!reach.active || !target || (message.priority !== 'emergency' && !allowed[channel])) continue;
-      queue.push({_id:randomUUID(), notification:note._id, recipient, channel, target, ...externalCopy(message, channel),
+      queue.push({_id:randomUUID(), notification:note._id, recipient, channel, target, ...externalCopy(message, channel), link:message.link,
         state:'queued', attempts:0, nextAttemptAt:now, lockedUntil:null, lastError:null, sentAt:null, history:[]});
     }
     if (queue.length) await deliveries().insertMany(queue);
@@ -97,7 +99,7 @@ async function sendThroughProvider(delivery:Delivery): Promise<Outcome> {
   const webhook = !!url && !!key && (url.protocol === 'https:' || (!!local && url.protocol === 'http:'));
   // Without a delivery webhook, email goes straight out over SMTP (MAIL_* settings).
   if (!webhook && delivery.channel === 'email' && smtpConfigured()) {
-    try { await sendEmail(delivery.target, delivery.subject, delivery.text, delivery._id); return {ok:true}; }
+    try { await sendEmail(delivery.target, delivery.subject, delivery.text, delivery._id, delivery.link); return {ok:true}; }
     catch (error) {
       return {ok:false, retry:!permanentSmtpError(error), error:'Email failed: ' + (error instanceof Error ? error.message.slice(0, 160) : 'unknown error')};
     }

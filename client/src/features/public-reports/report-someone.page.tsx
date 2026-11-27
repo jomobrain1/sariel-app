@@ -4,6 +4,7 @@ import { AccountIcon } from '../../components/account-icon';
 import { apiStatus } from '../../lib/api-status';
 import { publicReportsApi } from './public-reports.api';
 import './public-reports.css';
+import { toast } from '../../lib/toast';
 
 const countries: [string, string][] = [['KE', 'Kenya'], ['UG', 'Uganda'], ['TZ', 'Tanzania'], ['ET', 'Ethiopia'], ['SA', 'Saudi Arabia'], ['AE', 'United Arab Emirates'],
   ['QA', 'Qatar'], ['KW', 'Kuwait'], ['OM', 'Oman'], ['BH', 'Bahrain'], ['LB', 'Lebanon'], ['JO', 'Jordan'], ['GB', 'United Kingdom'], ['US', 'United States']];
@@ -63,9 +64,10 @@ export function ReportSomeonePage() {
       setProgress('Finishing…');
       await submitReport({ id, token }).unwrap();
       setDone(true);
+      toast.success('Sariel’s team will review it.', 'Report sent');
     } catch (failure) {
       const status = apiStatus(failure);
-      if (failure instanceof UploadError) { setError(`Couldn’t upload ${failure.file}. Your report was not sent. Try again, or remove the file and send without it.`); return; }
+      if (failure instanceof UploadError) { toast.error(`Couldn’t upload ${failure.file}.`); setError(`Couldn’t upload ${failure.file}. Your report was not sent. Try again, or remove the file and send without it.`); return; }
       if (status === 503) { setError('Photo and video uploads are not available right now. Remove the files and send your report without them.'); return; }
       setError(status === 429 ? 'Too many reports from this connection. Please wait a few minutes.' : status === 422 ? 'Please check the details and try again.'
         : 'Something went wrong while sending. Check your connection and try again.');

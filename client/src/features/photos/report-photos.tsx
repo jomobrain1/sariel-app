@@ -4,6 +4,7 @@ import { AccountIcon } from '../../components/account-icon';
 import { Toggle } from '../../components/toggle';
 import { apiStatus, apiMessage } from '../../lib/api-status';
 import { photosApi, type CoverPhoto, type CreatedReportPhoto } from './photos.api';
+import { toast } from '../../lib/toast';
 
 const levels = [{ value: 2, label: 'Assistance needed' }, { value: 3, label: 'Safety concern' }, { value: 4, label: 'Serious danger' }, { value: 5, label: 'Critical danger' }];
 const categories = ['welfare', 'medical', 'harassment', 'labour exploitation', 'trafficking', 'domestic violence'];
@@ -50,7 +51,7 @@ export function CreateReportPhoto({ cover, close }: { cover: CoverPhoto; close: 
     event.preventDefault();
     setError('');
     try { setCreated((await create({ coverId: cover.id, level, category, ...(country ? { country } : {}), ...(description.trim() ? { description: description.trim() } : {}) }).unwrap()).data); }
-    catch (failure) { setError(apiStatus(failure) === 404 ? 'That photo has expired. Choose another.' : apiMessage(failure, 'Couldn’t create the report photo. Try again.')); }
+    catch (failure) { const message = apiStatus(failure) === 404 ? 'That photo has expired. Choose another.' : apiMessage(failure, 'Couldn’t create the report photo. Try again.'); setError(message); toast.error(message); }
   }
   if (created) return <Result photo={created} close={close} />;
   return <form className="report-form" onSubmit={submit}>

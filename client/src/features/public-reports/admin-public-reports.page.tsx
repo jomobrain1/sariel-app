@@ -4,6 +4,7 @@ import { statusLabel, urgencyLabel } from './labels';
 import { publicReportsApi, type ReportAction } from './public-reports.api';
 import './public-reports.css';
 import { visibleProgress } from '../../lib/visible-progress';
+import { toast } from '../../lib/toast';
 
 const when = (value: string) => new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -44,8 +45,8 @@ function AdminDetail({ id }: { id: string }) {
   async function act(key: string, body: { action?: ReportAction; status?: string }, done: string) {
     if (busy) return;
     setFailed(false); setSaved(''); setWorking(key);
-    try { await visibleProgress(update({ id, ...body, ...(text && body.action ? { note: text } : {}) }).unwrap()); setDetail(''); setSaved(done); }
-    catch { setFailed(true); }
+    try { await visibleProgress(update({ id, ...body, ...(text && body.action ? { note: text } : {}) }).unwrap()); setDetail(''); setSaved(done); toast.success(done); }
+    catch { setFailed(true); toast.error('Couldn’t save that. Try again.'); }
     finally { setWorking(undefined); }
   }
   const label = (key: string, text: string) => working === key ? <><span className="pr-spinner" aria-hidden="true" />Saving…</> : text;

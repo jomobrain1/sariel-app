@@ -11,6 +11,7 @@ import '../onboarding/onboarding.css';
 import { useAppDispatch } from '../../app/hooks';
 import { WelfareCard } from '../welfare/welfare-card';
 import { welfareApi } from '../welfare/welfare.api';
+import { toast } from '../../lib/toast';
 
 const levels = [2, 3, 4, 5];
 const categories = ['welfare', 'medical', 'harassment', 'labour exploitation'];
@@ -113,9 +114,10 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
       }
       const response = await send(last.current!).unwrap();
       last.current = null;
-      if(value.level === 1) setMessage(value.category === TRAVELLING ? 'Travelling status shared.' : 'Safe check-in recorded.');
+      if(value.level === 1) { const done = value.category === TRAVELLING ? 'Travelling status shared.' : 'Safe check-in recorded.'; setMessage(done); toast.success(done); }
       else {
         setMessage('Incident report recorded.');
+        toast.success('Your circle and Sariel’s responders have been alerted.', 'Incident report sent');
         setReference(response.data.reference);
         setLevel(undefined); setCountry(''); setCategory('welfare'); setNote('');
       }
@@ -124,6 +126,7 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
       if (value.level === 1) dispatch(welfareApi.util.invalidateTags(['Welfare']));
     } catch {
       setMessage('Submission unconfirmed. Check your connection and retry with the same details.');
+      toast.error('Check your connection and retry with the same details.', 'Not sent');
     } finally { pending.current = false; setBusy(false); }
   }
   function report(e:FormEvent){

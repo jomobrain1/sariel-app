@@ -3,6 +3,7 @@ import { BrowserRouter, useRoutes } from 'react-router'
 import { routes } from './routes'
 import { AuthBootstrap } from './app/auth'
 import './App.css'
+import { Toaster } from './components/toaster'
 
 function AppRoutes() {
   return useRoutes(routes)
@@ -14,6 +15,7 @@ export default function App() {
       <AuthBootstrap fallback={<SessionSkeleton />}>
         <AppRoutes />
       </AuthBootstrap>
+      <Toaster />
     </BrowserRouter>
   )
 }

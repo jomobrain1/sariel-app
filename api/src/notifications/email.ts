@@ -23,16 +23,43 @@ function transport(): Transporter {
 
 const escape = (value:string) => value.replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]!));
 
-export async function sendEmail(to:string, subject:string, text:string, idempotencyKey:string) {
+// Splits a notification body into readable lines: "A · B · C" lists, or sentences.
+function lines(text:string) {
+  const parts = text.includes(' · ') ? text.split(' · ') : text.split(/(?<=[.!?”])\s+(?=[A-Z“])/);
+  return parts.map(part => part.trim()).filter(Boolean);
+}
+const urlPattern = /https?:\/\/[^\s<>"”]+/g;
+// One line of the message: plain text, with links shown as buttons ("Open in Maps" for map links).
+function line(text:string) {
+  const urls = text.match(urlPattern) ?? [];
+  const label = escape(text.replace(urlPattern, '').replace(/[:\s]+$/, '').trim());
+  const links = urls.map(url => `<a href="${escape(url)}" style="display:inline-block;margin-top:6px;color:#0f4d3f;font-weight:700;text-decoration:underline">${/maps\.google\./.test(url) ? 'Open in Maps' : 'Open link'} &rarr;</a>`).join(' ');
+  return `<tr><td style="padding:10px 0;border-top:1px solid #e3ebe7;font-size:15px;line-height:1.5;color:#14231f">${label}${label && links ? '<br>' : ''}${links}</td></tr>`;
+}
+
+export async function sendEmail(to:string, subject:string, text:string, idempotencyKey:string, link?:string) {
   const appUrl = (process.env.APP_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const target = link?.startsWith('/') ? appUrl + link : appUrl;
   const fromName = process.env.MAIL_FROM_NAME || 'Sariel';
   const from = process.env.MAIL_FROM || process.env.MAIL_USER!.trim();
-  const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#14231f">
-  <p style="font-weight:800;font-size:18px;margin:0 0 16px">SARIEL</p>
-  <p style="font-size:16px;line-height:1.5;margin:0 0 20px">${escape(text)}</p>
-  <a href="${escape(appUrl)}" style="display:inline-block;background:#0f4d3f;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:700">Open Sariel</a>
-  <p style="font-size:12px;color:#5b6b66;margin:24px 0 0">You receive this because of your Sariel notification settings.</p></div>`;
-  await transport().sendMail({from:`"${fromName.replace(/"/g, '')}" <${from}>`, to, subject, text:`${text}\n\n${appUrl}`, html,
+  const body = lines(text).map(line).join('').replace('border-top:1px solid #e3ebe7;', '');
+  // Table layout with inline styles: renders consistently in Gmail, Outlook and phone mail apps.
+  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#eef3f0">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef3f0;padding:24px 12px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif">
+<tr><td align="center">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #dce6e1">
+    <tr><td style="background:#0f4d3f;padding:18px 24px;color:#ffffff;font-weight:800;font-size:18px;letter-spacing:.06em">&#128737;&#65039; SARIEL</td></tr>
+    <tr><td style="padding:24px 24px 8px"><h1 style="margin:0;font-size:20px;line-height:1.3;color:#14231f">${escape(subject)}</h1></td></tr>
+    <tr><td style="padding:8px 24px 4px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f8f6;border:1px solid #dce6e1;border-left:4px solid #0f4d3f;border-radius:10px">
+        <tr><td style="padding:6px 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${body}</table></td></tr>
+      </table>
+    </td></tr>
+    <tr><td style="padding:20px 24px 24px"><a href="${escape(target)}" style="display:inline-block;background:#0f4d3f;color:#ffffff;text-decoration:none;padding:13px 22px;border-radius:10px;font-weight:700;font-size:15px">Open Sariel</a></td></tr>
+    <tr><td style="padding:16px 24px;background:#f7faf8;border-top:1px solid #e3ebe7;font-size:12px;line-height:1.5;color:#5b6b66">You receive this because of your Sariel notification settings. If someone may be in immediate danger, also contact local emergency services.</td></tr>
+  </table>
+</td></tr></table></body></html>`;
+  await transport().sendMail({from:`"${fromName.replace(/"/g, '')}" <${from}>`, to, subject, text:`${subject}\n\n${lines(text).join('\n')}\n\n${target}`, html,
     headers:{'X-Entity-Ref-ID':idempotencyKey}});
 }
 

@@ -1,0 +1,21 @@
+/* Toasts: top-right stack; green success, red error, amber warning, blue info. */
+.app-toaster {position:fixed;z-index:1000;top:16px;right:16px;display:grid;gap:10px;width:min(380px,calc(100vw - 32px));pointer-events:none}
+.app-toast {--accent:#0f4d3f;--soft:#e6f2ec;position:relative;overflow:hidden;display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:12px;
+  padding:14px 12px 14px 14px;border:1px solid #dfe7e3;border-radius:12px;background:#fff;color:#14231f;
+  box-shadow:0 12px 32px rgb(15 35 30 / 16%),0 2px 6px rgb(15 35 30 / 8%);pointer-events:auto;animation:app-toast-in .28s cubic-bezier(.2,.9,.3,1.2)}
+.app-toast-success {--accent:#1f7a4d;--soft:#e3f4ea}
+.app-toast-error {--accent:#b3261e;--soft:#fbe9e7}
+.app-toast-warning {--accent:#a86400;--soft:#fdf1dc}
+.app-toast-info {--accent:#1d5b8f;--soft:#e4eef8}
+.app-toast-icon {display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--soft);color:var(--accent)}
+.app-toast-text {display:grid;gap:2px;padding-top:4px;min-width:0}
+.app-toast-text strong {font-size:.92rem}
+.app-toast-text p {margin:0;font-size:.92rem;line-height:1.4;overflow-wrap:anywhere}
+.app-toast button {display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:none;color:#5b6b66;cursor:pointer}
+.app-toast button:hover {background:#f1f5f3;color:#14231f}
+.app-toast button:focus-visible {outline:2px solid var(--accent);outline-offset:1px}
+.app-toast-timer {position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--accent);transform-origin:left;animation:app-toast-timer linear forwards}
+@keyframes app-toast-in {from{opacity:0;transform:translateX(24px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes app-toast-timer {from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@media (prefers-reduced-motion:reduce){.app-toast{animation:none}.app-toast-timer{display:none}}
+@media (max-width:520px){.app-toaster{top:auto;bottom:16px;right:16px;left:16px;width:auto}}
