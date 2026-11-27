@@ -71,3 +71,9 @@
 @media(max-width:860px){.safety-grid{grid-template-columns:1fr}.safety-dashboard .safety-primary{width:100%}}
 @media(max-width:520px){.safety-options,.safety-fields{grid-template-columns:1fr}.safety-history li{flex-direction:column;gap:3px}
   .safety-link summary{padding:18px 20px}.safety-link[open] > :not(summary),.safety-link p{margin-left:20px;margin-right:20px}}
+
+.safety-photos {display:flex;align-items:center;gap:18px;padding:22px 28px;color:inherit;text-decoration:none;font-size:1.2rem;font-weight:700}
+.safety-photos > span:nth-child(2) {flex:1}
+.safety-photos > .account-icon {width:20px;height:20px}
+.safety-photos:hover {border-color:#9fb3ac}
+.safety-photos:focus-visible {outline:3px solid #25866f;outline-offset:3px}

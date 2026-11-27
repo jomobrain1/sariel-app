@@ -5,6 +5,8 @@ import { once } from 'node:events';
 import { createServer, request } from 'node:http';
 import mongoose from 'mongoose';
 import { bootstrapTenancy } from '@tilcayo/auth';
+import { PNG } from 'pngjs';
+import jpeg from 'jpeg-js';
 process.env.AUTH_ACCESS_SECRET=randomUUID()+randomUUID();
 process.env.AUTH_REFRESH_SECRET=randomUUID()+randomUUID();
 process.env.TENANCY_BASE_DOMAIN='localhost';
@@ -97,6 +99,42 @@ try {
 
   globalThis.phase5={call,post,put,admin,alice,bob,gemini,mongoose,settings,embedText};
   // Later sections are appended below as features land.
+
+  // ── Cover images (M21) ────────────────────────────────────
+  const makePng=(w,h,seed=1)=>{const png=new PNG({width:w,height:h});for(let i=0;i<w*h;i++){png.data[i*4]=(i*seed)%256;png.data[i*4+1]=(i>>3)%256;png.data[i*4+2]=(i>>6)%256;png.data[i*4+3]=255;}return PNG.sync.write(png);};
+  const makeJpeg=(w,h)=>{const data=Buffer.alloc(w*h*4);for(let i=0;i<w*h;i++){data[i*4]=i%256;data[i*4+1]=120;data[i*4+2]=200;data[i*4+3]=255;}return jpeg.encode({data,width:w,height:h},85).data;};
+  globalThis.fakeImage=makePng(64,48).toString('base64');
+  const themes=await call('individual/images/themes',{token:alice.token});
+  assert(themes.some(t=>t.id==='mountains'));
+  // Only fixed themes are accepted; free text never reaches the provider.
+  await post('individual/images/generate',{theme:'mountains',prompt:'I am in danger'},{token:alice.token,status:422});
+  await post('individual/images/generate',{theme:'danger'},{token:alice.token,status:422});
+  const generated=await post('individual/images/generate',{theme:'mountains'},{token:alice.token,status:201});
+  assert.equal(generated.kind,'generated');assert.equal(generated.width,64);
+  const imagePrompt=gemini.calls.at(-1).body.contents[0].parts[0].text;
+  assert.match(imagePrompt,/green mountains/);assert.match(imagePrompt,/no people, no text/);
+  assert.match(gemini.calls.at(-1).path,/gemini-2\.5-flash-image:generateContent/);
+  // Uploads: JPEG is converted to PNG and large photos are scaled down.
+  const uploaded=await post('individual/images/upload',{image:'data:image/jpeg;base64,'+makeJpeg(2000,1000).toString('base64')},{token:alice.token,status:201});
+  assert.equal(uploaded.kind,'upload');assert.equal(uploaded.width,1600);assert.equal(uploaded.height,800);
+  const library=await post('individual/images/upload',{image:makePng(800,400,3).toString('base64'),kind:'library'},{token:alice.token,status:201});
+  assert.equal(library.kind,'library');
+  await post('individual/images/upload',{image:Buffer.from('not an image at all, just text').toString('base64')},{token:alice.token,status:422});
+  const pngHeaderOnly=makePng(10,10);pngHeaderOnly.writeUInt32BE(50000,16);pngHeaderOnly.writeUInt32BE(50000,20);
+  await post('individual/images/upload',{image:pngHeaderOnly.toString('base64')},{token:alice.token,status:422});
+  await post('individual/images/upload',{image:Buffer.alloc(6.5*1024*1024,1).toString('base64')},{token:alice.token,status:413});
+  // Other routes keep the small default body limit.
+  await post('individual/updates',{text:'x'.repeat(200_000)},{token:alice.token,status:413});
+  const mine=await call('individual/images',{token:alice.token});
+  assert.equal(mine.length,3);assert(mine.every(i=>!('png' in i)&&new Date(i.expiresAt)>new Date()));
+  const full=await call('individual/images/'+uploaded.id,{token:alice.token});
+  assert.match(full.dataUrl,/^data:image\/png;base64,iVBOR/);
+  await call('individual/images/'+uploaded.id,{token:bob.token,status:404});
+  await call('individual/images/'+uploaded.id,{method:'DELETE',token:bob.token,status:404});
+  await call('individual/images/'+library.id,{method:'DELETE',token:alice.token,status:204});
+  assert.equal((await call('individual/images',{token:alice.token})).length,2);
+  Object.assign(globalThis.phase5,{makePng,makeJpeg,generated,uploaded});
+  console.log('Phase 5 image generation checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
   fake.close();
