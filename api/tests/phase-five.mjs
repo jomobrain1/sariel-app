@@ -278,6 +278,39 @@ try {
   assert.equal(listed.length,2);assert(listed.every(r=>r.revoked));
   assert.equal(listed.find(r=>r.id===photo.id).uses>=3,true);
   console.log('Phase 5 report photo checks passed.');
+
+  // ── Descriptions and link spread ─────────────────────────
+  await post('individual/status',{requestId:randomUUID(),level:2,category:'welfare',note:'My supervisor is shouting at me.'},{token:alice.token});
+  assert.equal((await call('individual/status/history',{token:alice.token}))[0].note,'My supervisor is shouting at me.');
+  await post('individual/status',{requestId:randomUUID(),level:2,note:'x'.repeat(1001)},{token:alice.token,status:422});
+  await mongoose.connection.collection('sariel_safety_events').updateMany({owner:alice.id},{$set:{active:false}});
+
+  const described=await post('individual/report-photos',{coverId:cover.id,level:5,category:'trafficking',description:'My employer took my passport.'},{token:alice.token,status:201});
+  assert.equal(described.description,'My employer took my passport.');
+  await post('individual/report-photos',{coverId:cover.id,level:5,category:'trafficking',description:'x'.repeat(501)},{token:alice.token,status:422});
+  const describedBytes=Buffer.from(described.dataUrl.split(',')[1],'base64');
+  assert.equal((await check(describedBytes)).report.description,'My employer took my passport.');
+  const visit=visitor=>post('auth/safety/photo-link',{token:described.link.slice(3),...(visitor?{visitor}:{})},{status:204});
+  await visit('visitor-one-aaaa');
+  const listed2=await call('platform/incidents?search=Alice',{token:admin});
+  const opened=listed2.items.find(i=>i.channel==='image'&&i.level===5);
+  assert.equal(opened.note,'My employer took my passport.');
+  const bobAlert=(await call('individual/notifications',{token:bob.token})).items.find(n=>n.kind==='photo-report'&&n.body.includes('passport'));
+  assert(bobAlert,'circle alert includes the description');
+  // The same visitor again and a second visitor: no spread alert yet.
+  await visit('visitor-one-aaaa');await visit('visitor-two-bbbb');await visit();
+  const spreadSignals=async()=>(await call('platform/incidents?search=Alice',{token:admin})).items.find(i=>i.reference===opened.reference).signals.filter(x=>x.action==='photo-link-spread');
+  assert.equal((await spreadSignals()).length,0);
+  // The third different person triggers it once.
+  await visit('visitor-three-cc');
+  assert.equal((await spreadSignals()).length,1);
+  await visit('visitor-four-dddd');
+  assert.equal((await spreadSignals()).length,1);
+  const spreadAlerts=(await call('individual/notifications',{token:bob.token})).items.filter(n=>n.kind==='photo-link-spread');
+  assert.equal(spreadAlerts.length,1);assert.equal(spreadAlerts[0].priority,'emergency');
+  // Still only one incident for this photo.
+  assert.equal((await call('individual/status/history',{token:alice.token})).filter(e=>e.channel==='image'&&e.active).length,1);
+  console.log('Phase 5 description and link spread checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
   fake.close();

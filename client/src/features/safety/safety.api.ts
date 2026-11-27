@@ -1,7 +1,7 @@
 import { tilcayoApi } from '../../app/api';
 
 export const labels = ['Unknown', 'Confirmed safe', 'Assistance needed', 'Safety concern', 'Serious danger', 'Critical danger'];
-export type Update = { level: number; category: string; country?: string; requestId: string };
+export type Update = { level: number; category: string; country?: string; note?: string; requestId: string };
 type Event = { _id: string; level: number; active: boolean; createdAt: string };
 
 export const safetyApi = tilcayoApi.injectEndpoints({ endpoints: b => ({

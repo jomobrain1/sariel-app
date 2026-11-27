@@ -9,7 +9,7 @@ import type { Raster } from '../images/codec.js';
 const MAGIC = Buffer.from('SRL1');
 const HEADER = MAGIC.length + 2;
 
-export interface ReportPayload { v:1; r:string; l:number; c:string; k?:string; t:number }
+export interface ReportPayload { v:1; r:string; l:number; c:string; k?:string; d?:string; t:number }
 
 export function seal(payload:ReportPayload, selector:Buffer, key:Buffer): Buffer {
   const iv = randomBytes(12);

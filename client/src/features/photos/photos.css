@@ -85,3 +85,7 @@
 .share-icon .account-icon {width:26px;height:26px}
 .report-result img {max-height:220px}
 .report-copy {min-width:0}
+.report-description {display:grid;gap:6px;font-weight:700;font-size:.9rem}
+.report-description textarea {padding:10px 12px;border:1px solid #c9d3cf;border-radius:8px;font:inherit;font-weight:400;resize:vertical;min-height:76px;color:inherit}
+.report-description small {font-weight:400;color:#5b6b66}
+.report-desc {color:#3d4d48;font-size:.9rem;overflow-wrap:anywhere}

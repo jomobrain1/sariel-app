@@ -33,7 +33,7 @@ function CreateIncident({done}:{done:()=>void}) {
 }
 
 const signalLabels:Record<string,string>={
-  'gallery-road':'Help still needed','gallery-bridge':'Situation worsening','gallery-mountain':'Immediate danger',
+  'gallery-road':'Help still needed','photo-link-spread':'Report link opened by 3+ people','gallery-bridge':'Situation worsening','gallery-mountain':'Immediate danger',
   acknowledge:'Report acknowledged',dispatch:'Dispatch confirmed'
 };
 function ResponsePanel({item,refresh}:{item:PlatformIncident;refresh:()=>Promise<unknown>}){
@@ -50,7 +50,7 @@ function ResponsePanel({item,refresh}:{item:PlatformIncident;refresh:()=>Promise
     setConfirmed(false);
   }
   return <section className="incident-response"><h3>Response timeline</h3>
-    {item.signals.length ? <ol>{item.signals.map((s,i)=><li key={i}><strong>{signalLabels[s.action]}</strong><small>{s.actorName || (s.action.startsWith('gallery-')?'Reporting link':'Responder')} · {timestamp.format(new Date(s.at))}</small></li>)}</ol> : <p>Awaiting a response.</p>}
+    {item.signals.length ? <ol>{item.signals.map((s,i)=><li key={i}><strong>{signalLabels[s.action]}</strong><small>{s.actorName || (s.action.startsWith('gallery-')||s.action==='photo-link-spread'?'Reporting link':'Responder')} · {timestamp.format(new Date(s.at))}</small></li>)}</ol> : <p>Awaiting a response.</p>}
     {item.state!=='resolved' && !dispatched && item.version!==undefined && <>
       {seen && <label><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> I have confirmed a responder is on the way.</label>}
       <button className="incident-primary" disabled={result.isLoading || (seen && !confirmed)} onClick={()=>void respond()}>{seen?'Confirm dispatch':'Acknowledge report'}</button></>}
@@ -101,6 +101,6 @@ export function PlatformIncidents(){
     </section>
     <Modal open={creating} title="New incident" onClose={()=>setCreating(false)}>{creating && <CreateIncident done={()=>{setCreating(false);setNotice('Incident recorded.');setDraft('');setSearch('');setGroup('all');chooseLevel(0);void query.refetch();}}/>}</Modal>
     <Modal open={!!selected} title={selected?labels[selected.level]:'Incident details'} onClose={()=>select(null)}>{selected && <><dl className="incident-detail">
-      {Object.entries({'Account holder':selected.account?.name??'Unavailable',Email:selected.account?.email??'Unavailable',Organization:selected.organization??'Unassigned',Category:selected.category,Status:selected.state,'Reported via':selected.channel==='gateway'?'Reporting link':selected.channel==='welfare'?'Missed check-in escalation':selected.channel==='image'?'Report photo':'Signed-in account','Date reported':timestamp.format(new Date(selected.createdAt)),Reference:selected.reference}).map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl><ResponsePanel key={selected.reference} item={selected} refresh={()=>query.refetch()}/></>}</Modal>
+      {Object.entries({'Account holder':selected.account?.name??'Unavailable',Email:selected.account?.email??'Unavailable',Organization:selected.organization??'Unassigned',Category:selected.category,...(selected.note?{Description:selected.note}:{}),Status:selected.state,'Reported via':selected.channel==='gateway'?'Reporting link':selected.channel==='welfare'?'Missed check-in escalation':selected.channel==='image'?'Report photo':'Signed-in account','Date reported':timestamp.format(new Date(selected.createdAt)),Reference:selected.reference}).map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl><ResponsePanel key={selected.reference} item={selected} refresh={()=>query.refetch()}/></>}</Modal>
   </section>;
 }

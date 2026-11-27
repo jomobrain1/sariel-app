@@ -74,11 +74,12 @@ export const tools = {
       level:z.number().int().min(2).max(5).describe('2 Assistance needed, 3 Safety concern, 4 Serious danger, 5 Critical danger'),
       category:z.string().trim().min(1).max(60).describe('Short category such as welfare, medical, harassment, labour exploitation'),
       country:z.string().regex(/^[A-Z]{2}$/).optional().describe('Two-letter country code if known'),
+      description:z.string().trim().max(500).optional().describe('Short description of what is happening, in the person’s words'),
     }),
     description:'Report a safety incident for the person. The app asks the person to confirm before anything is sent.',
-    summary:args => `Report “${levelLabels[args.level]}” (${args.category}${args.country ? ', ' + args.country : ''}) to responders`,
+    summary:args => `Report “${levelLabels[args.level]}” (${args.category}${args.country ? ', ' + args.country : ''}) to responders${args.description ? `: “${args.description}”` : ''}`,
     run:async (ctx, args) => {
-      const result = await recordStatus(ctx.userId, {level:args.level, category:args.category, country:args.country, requestId:randomUUID()}, 'account');
+      const result = await recordStatus(ctx.userId, {level:args.level, category:args.category, country:args.country, note:args.description, requestId:randomUUID()}, 'account');
       return {reported:true, status:levelLabels[result.level], reference:result.reference.slice(0, 12)};
     }}),
 
