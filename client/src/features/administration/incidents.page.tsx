@@ -5,6 +5,7 @@ import { AccountIcon } from '../../components/account-icon';
 import { labels, safetyApi } from '../safety/safety.api';
 import { configApi, type PlatformIncident } from './configuration.api';
 import './incidents.css';
+import { visibleProgress } from '../../lib/visible-progress';
 
 const priorities = [{level:5,name:'Critical'},{level:4,name:'High'},{level:3,name:'Medium'},{level:2,name:'Low'}];
 const groups = [{key:'all',name:'All incidents'},{key:'open',name:'Open'},{key:'progress',name:'In progress'},{key:'resolved',name:'Resolved'}];
@@ -58,7 +59,7 @@ function ResponsePanel({item,refresh}:{item:PlatformIncident;refresh:()=>Promise
   async function run(command:Command){
     if(item.version===undefined || busy)return;
     setBusy(command.action); setSaved('');
-    try{ await send({reference:item.reference,version:item.version,...command}).unwrap(); setNote(''); setConfirmed(false); setSaved(savedLabels[command.action]); }
+    try{ await visibleProgress(send({reference:item.reference,version:item.version,...command}).unwrap()); setNote(''); setConfirmed(false); setSaved(savedLabels[command.action]); }
     catch{/* Shown below; refresh picks up concurrent changes. */}
     try{ await refresh(); } finally { setBusy(undefined); }
   }

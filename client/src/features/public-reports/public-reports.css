@@ -74,3 +74,11 @@
 .pr-act .pr-ghost:disabled, .pr-resolve:disabled {opacity:.5;cursor:not-allowed}
 .pr-resolve {min-height:40px;padding:0 16px;border:1px solid #0f4d3f;border-radius:10px;background:#0f4d3f;color:#fff;font-weight:700;cursor:pointer}
 .pr-notes li.is-action p {font-weight:700;color:#0f4d3f}
+
+/* Progress on admin actions */
+.pr-actions button {display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.pr-spinner {width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:pr-spin .7s linear infinite;flex:none}
+.pr-act button[aria-busy=true] {opacity:1;cursor:progress}
+.pr-saved {margin:10px 0 0;padding:8px 12px;border-radius:8px;background:#e6f2ec;color:#0f4d3f;font-weight:600}
+@keyframes pr-spin {to {transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce) {.pr-spinner {animation-duration:2s}}
