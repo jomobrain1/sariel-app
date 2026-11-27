@@ -42,7 +42,20 @@ async function cron(req, res) {
   res.end(JSON.stringify({ success: results.every(r => r.ok), data: results }));
 }
 
+// Send queued email/SMS right after any change (e.g. a danger report), so alerts don't wait for a cron.
+// Vercel's runtime keeps the function alive for work passed to waitUntil (the hook @vercel/functions wraps).
+let lastKick = 0;
+function deliverSoon(context) {
+  if (typeof context?.waitUntil !== 'function' || Date.now() - lastKick < 5_000) return;
+  lastKick = Date.now();
+  context.waitUntil(runJobsOnce().catch(error => console.error('Background delivery failed:', error)));
+}
+
 export default async function sariel(req, res) {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
+    const context = globalThis[Symbol.for('@vercel/request-context')]?.get?.();
+    res.once('finish', () => deliverSoon(context));
+  }
   try { await connected(); }
   catch {
     res.statusCode = 503;
