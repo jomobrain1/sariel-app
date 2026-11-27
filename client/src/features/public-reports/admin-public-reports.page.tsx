@@ -3,6 +3,7 @@ import { PublicReportDetail } from './report-detail';
 import { statusLabel, urgencyLabel } from './labels';
 import { publicReportsApi, type ReportAction } from './public-reports.api';
 import './public-reports.css';
+import { visibleProgress } from '../../lib/visible-progress';
 
 const when = (value: string) => new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -33,26 +34,33 @@ function AdminDetail({ id }: { id: string }) {
   const [update, updating] = publicReportsApi.useUpdatePublicReportMutation();
   const [detail, setDetail] = useState('');
   const [failed, setFailed] = useState(false);
+  // Which button is saving: it shows a spinner, every action stays locked, then a confirmation appears.
+  const [working, setWorking] = useState<string>();
+  const [saved, setSaved] = useState('');
   const data = report.currentData?.data;
   if (!data) return <p role="status" className="pr-muted">Loading…</p>;
-  const busy = updating.isLoading;
+  const busy = !!working || updating.isLoading;
   const text = detail.trim();
-  async function act(body: { action?: ReportAction; status?: string }) {
-    setFailed(false);
-    try { await update({ id, ...body, ...(text && body.action ? { note: text } : {}) }).unwrap(); setDetail(''); }
+  async function act(key: string, body: { action?: ReportAction; status?: string }, done: string) {
+    if (busy) return;
+    setFailed(false); setSaved(''); setWorking(key);
+    try { await visibleProgress(update({ id, ...body, ...(text && body.action ? { note: text } : {}) }).unwrap()); setDetail(''); setSaved(done); }
     catch { setFailed(true); }
+    finally { setWorking(undefined); }
   }
+  const label = (key: string, text: string) => working === key ? <><span className="pr-spinner" aria-hidden="true" />Saving…</> : text;
   const closed = data.status === 'closed';
   return <PublicReportDetail report={data} onNote={note => update({ id, note }).unwrap()} actions={<section className="pr-act">
     <h3>Actions</h3>
-    {closed ? <div className="pr-actions"><button className="pr-ghost" disabled={busy} onClick={() => void act({ status: 'submitted' })}>Reopen</button></div> : <>
+    {closed ? <div className="pr-actions"><button className="pr-ghost" disabled={busy} aria-busy={working === 'reopen'} onClick={() => void act('reopen', { status: 'submitted' }, 'Report reopened.')}>{label('reopen', 'Reopen')}</button></div> : <>
       <input className="pr-act-detail" maxLength={1500} value={detail} onChange={e => setDetail(e.target.value)} placeholder="Details for the action (optional), e.g. spoke to them by phone" aria-label="Action details" />
       <div className="pr-actions">
-        {data.status === 'submitted' && <button className="pr-ghost" disabled={busy} onClick={() => void act({ status: 'reviewing' })}>Start review</button>}
-        <button className="pr-ghost" disabled={busy || !data.contact} title={data.contact ? undefined : 'The reporter left no contact'} onClick={() => void act({ action: 'contacted-reporter' })}>Contacted reporter</button>
-        <button className="pr-ghost" disabled={busy} onClick={() => void act({ action: 'referred' })}>Referred for help</button>
-        <button className="pr-resolve" disabled={busy} onClick={() => { if (confirm('Resolve and close this report?')) void act({ action: 'resolved' }); }}>Resolve</button>
+        {data.status === 'submitted' && <button className="pr-ghost" disabled={busy} aria-busy={working === 'review'} onClick={() => void act('review', { status: 'reviewing' }, 'Review started.')}>{label('review', 'Start review')}</button>}
+        <button className="pr-ghost" disabled={busy || !data.contact} title={data.contact ? undefined : 'The reporter left no contact'} aria-busy={working === 'contacted'} onClick={() => void act('contacted', { action: 'contacted-reporter' }, 'Saved: reporter contacted.')}>{label('contacted', 'Contacted reporter')}</button>
+        <button className="pr-ghost" disabled={busy} aria-busy={working === 'referred'} onClick={() => void act('referred', { action: 'referred' }, 'Saved: referred for help.')}>{label('referred', 'Referred for help')}</button>
+        <button className="pr-resolve" disabled={busy} aria-busy={working === 'resolve'} onClick={() => { if (confirm('Resolve and close this report?')) void act('resolve', { action: 'resolved' }, 'Report resolved and closed.'); }}>{label('resolve', 'Resolve')}</button>
       </div></>}
+    {saved && !busy && !failed && <p role="status" className="pr-saved">✓ {saved}</p>}
     {failed && <p role="alert" className="pr-error">Couldn’t save that. Try again.</p>}
   </section>} />;
 }
