@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { registerJob } from '../jobs/worker.js';
 import { render, type NotificationKind } from './templates.js';
 import { permanentSmtpError, sendEmail, smtpConfigured } from './email.js';
+import { sendSms, smsConfigured, SmsError } from './sms.js';
 
 export type Channel = 'email' | 'sms';
 export interface Notification {
@@ -95,7 +96,12 @@ async function sendThroughProvider(delivery:Delivery): Promise<Outcome> {
       return {ok:false, retry:!permanentSmtpError(error), error:'Email failed: ' + (error instanceof Error ? error.message.slice(0, 160) : 'unknown error')};
     }
   }
-  if (!webhook || !url) return {ok:false, retry:false, error:delivery.channel === 'sms' ? 'SMS provider not configured.' : 'Email is not configured (set MAIL_USER and MAIL_PASS).'};
+  // Without a delivery webhook, SMS goes out through Mobile Sasa (MOBILESASA_TOKEN).
+  if (!webhook && delivery.channel === 'sms' && smsConfigured()) {
+    try { await sendSms(delivery.target, delivery.text); return {ok:true}; }
+    catch (error) { return {ok:false, retry:error instanceof SmsError ? error.retryable : true, error:'SMS failed: ' + (error instanceof Error ? error.message.slice(0, 160) : 'unknown error')}; }
+  }
+  if (!webhook || !url) return {ok:false, retry:false, error:delivery.channel === 'sms' ? 'SMS is not configured (set MOBILESASA_TOKEN).' : 'Email is not configured (set MAIL_USER and MAIL_PASS).'};
   try {
     const response = await fetch(url, {method:'POST', redirect:'error', signal:AbortSignal.timeout(10_000),
       headers:{'Content-Type':'application/json', Authorization:'Bearer ' + key, 'Idempotency-Key':delivery._id},

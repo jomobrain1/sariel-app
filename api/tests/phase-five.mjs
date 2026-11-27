@@ -494,6 +494,44 @@ try {
   // Individuals (no organisation) can't read the organisation view.
   await call('organization/public-reports',{token:alice.token,status:403});
   console.log('Phase 5 public report checks passed.');
+
+  // ── SMS through Mobile Sasa ──────────────────────────────
+  const texts=[];let smsReply={status:true,responseCode:'0200',message:'Accepted'};
+  const sasa=createServer((req,res)=>{let raw='';req.on('data',c=>raw+=c);req.on('end',()=>{
+    texts.push({path:req.url,auth:req.headers.authorization,body:JSON.parse(raw)});res.setHeader('content-type','application/json');res.end(JSON.stringify(smsReply));});});
+  sasa.listen(0);await once(sasa,'listening');
+  Object.assign(process.env,{MOBILESASA_TOKEN:'mbs_test_token',MOBILESASA_BASE_URL:'http://127.0.0.1:'+sasa.address().port,MOBILESASA_SENDER_ID:'SARIEL'});
+  delete process.env.NOTIFICATION_DELIVERY_URL;
+  const {deliveryCycle:smsCycle}=await import('../dist/notifications/engine.js');
+  await mongoose.connection.collection('sariel_notification_deliveries').updateMany({state:'queued'},{$set:{state:'skipped'}});
+  const dad=await post('individual/emergency-contacts',{name:'Dad',phone:'+254722000111',relationship:'family'},{token:alice.token,status:201});
+  await mongoose.connection.collection('sariel_safety_events').updateMany({owner:alice.id},{$set:{active:false}});
+  await post('individual/status',{requestId:randomUUID(),level:4,category:'welfare'},{token:alice.token});
+  await smsCycle(new Date(Date.now()+5000));
+  const toDad=texts.find(t=>t.body.phone==='254722000111');
+  assert(toDad,'SMS reached Mobile Sasa');
+  assert.equal(toDad.path,'/v1/send/message');assert.equal(toDad.auth,'Bearer mbs_test_token');assert.equal(toDad.body.senderID,'SARIEL');
+  assert(!/Alice|welfare/.test(toDad.body.message),'SMS text stays discreet');
+  const dadDelivery=await mongoose.connection.collection('sariel_notification_deliveries').findOne({recipient:'contact:'+dad.id,channel:'sms'});
+  assert.equal(dadDelivery.state,'sent');
+  // A rejected message (e.g. no balance) is recorded and not retried forever.
+  smsReply={status:false,message:'Insufficient balance'};
+  await mongoose.connection.collection('sariel_safety_events').updateMany({owner:alice.id},{$set:{active:false}});
+  await post('individual/status',{requestId:randomUUID(),level:3,category:'welfare'},{token:alice.token});
+  await smsCycle(new Date(Date.now()+10000));
+  const rejected=await mongoose.connection.collection('sariel_notification_deliveries').find({recipient:'contact:'+dad.id,channel:'sms'}).sort({nextAttemptAt:-1}).limit(1).next();
+  assert.equal(rejected.state,'skipped');assert.match(rejected.lastError,/Insufficient balance/);
+  // Phone verification codes go by SMS too.
+  smsReply={status:true};
+  delete process.env.VERIFICATION_DELIVERY_URL;
+  await post('individual/verification/request',{channel:'phone',phone:'+254733000222'},{token:bob.token,status:204});
+  const codeText=texts.find(t=>t.body.phone==='254733000222');
+  const code=codeText.body.message.match(/\d{6}/)[0];
+  await post('individual/verification/confirm',{channel:'phone',code},{token:bob.token,status:204});
+  assert.equal((await call('individual/account',{token:bob.token})).verifiedPhone,'+254733000222');
+  for(const k of ['MOBILESASA_TOKEN','MOBILESASA_BASE_URL','MOBILESASA_SENDER_ID'])delete process.env[k];
+  sasa.close();
+  console.log('Phase 5 SMS checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
   fake.close();
