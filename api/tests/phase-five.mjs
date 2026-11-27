@@ -80,7 +80,7 @@ try {
   let test=await post('platform/ai/test',{capability:'chat'},{token:admin});
   assert.equal(test.ok,true);assert.equal(test.detail,'OK');
   assert.equal(gemini.calls.at(-1).key,'gemini-test-key');
-  assert.match(gemini.calls.at(-1).path,/gemini-2\.5-flash:generateContent/);
+  assert.match(gemini.calls.at(-1).path,/gemini-3\.8-flash:generateContent/);
   test=await post('platform/ai/test',{capability:'embeddings'},{token:admin});
   assert.equal(test.detail,'16 dimensions');
   // Provider failures are reported, not thrown at the admin.
@@ -93,7 +93,7 @@ try {
   await put('platform/ai',settings,{token:admin});
 
   const report=await call('platform/ai/usage?days=7',{token:admin});
-  const chatRow=report.byCapability.find(r=>r.capability==='chat'&&r.model==='gemini-2.5-flash');
+  const chatRow=report.byCapability.find(r=>r.capability==='chat'&&r.model==='gemini-3.8-flash');
   assert(chatRow.requests>=2);assert(chatRow.failures>=1);assert(chatRow.input>=100);
   console.log('Phase 5 AI provider checks passed.');
 
@@ -140,7 +140,7 @@ try {
   await put('platform/ai',{...settings,dailyLimit:100},{token:admin});
   const chat=await post('individual/assistant/conversations',{language:'en'},{token:alice.token,status:201});
   const say=(text,token=alice.token,status=200)=>post('individual/assistant/conversations/'+chat.id+'/messages',{text},{token,status});
-  const lastRequest=()=>gemini.calls.filter(c=>c.path.includes('gemini-2.5-flash:generateContent')).at(-1).body;
+  const lastRequest=()=>gemini.calls.filter(c=>c.path.includes('gemini-3.8-flash:generateContent')).at(-1).body;
   const fnResponses=body=>body.contents.flatMap(c=>c.parts).filter(p=>p.functionResponse);
 
   // Read tool: runs immediately, the real result goes back to the model.
@@ -190,6 +190,13 @@ try {
   assert.equal(view.messages.at(-1).text,'I could not do that.');
   assert(!view.messages.some(m=>m.action?.status==='pending'));
   assert.equal((await call('individual/status/history',{token:alice.token})).length,before+1);
+
+  // A provider failure leaves no half-finished turn, so retrying doesn't duplicate the message.
+  const countBefore=(await call('individual/assistant/conversations/'+chat.id,{token:alice.token})).messages.length;
+  gemini.fail=3;
+  await say('This will fail',alice.token,502);
+  assert.equal((await call('individual/assistant/conversations/'+chat.id,{token:alice.token})).messages.length,countBefore);
+  gemini.fail=0;
 
   // Conversations are private and deletable; the daily limit applies.
   await call('individual/assistant/conversations/'+chat.id,{token:bob.token,status:404});

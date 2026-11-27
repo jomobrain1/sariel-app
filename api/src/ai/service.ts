@@ -12,7 +12,7 @@ export type ProviderId = 'gemini' | 'anthropic';
 /** What each provider can do, with suggested models. Superadmins may type any model the provider offers. */
 export const catalog: Record<ProviderId, {label:string; env:string; models:Partial<Record<Capability, string[]>>}> = {
   gemini:{label:'Google Gemini', env:'GEMINI_API_KEY', models:{
-    chat:['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite'],
+    chat:['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.5-pro'],
     embeddings:['gemini-embedding-001'],
     images:['gemini-2.5-flash-image'],
   }},
@@ -38,7 +38,7 @@ export interface AiSettings {
 }
 export const defaultSettings: Omit<AiSettings, 'keys'> = {
   _id:'ai',
-  chat:{provider:'gemini', model:'gemini-2.5-flash'},
+  chat:{provider:'gemini', model:'gemini-3.8-flash'},
   embeddings:{provider:'gemini', model:'gemini-embedding-001'},
   images:{provider:'gemini', model:'gemini-2.5-flash-image'},
   dailyLimit:100,
@@ -102,7 +102,7 @@ async function track<T extends {usage:{input:number; output:number}}>(
   } catch (error) {
     await usage().insertOne({...base, input:0, output:0, ok:false, error:error instanceof Error ? error.message.slice(0, 300) : 'failed'});
     if (error instanceof ProviderError) throw createHttpError(error.status === 429 ? 429 : 502, 'AI_PROVIDER_ERROR',
-      error.status === 429 ? 'The AI service is busy. Try again shortly.' : 'The AI service could not complete the request.');
+      error.status === 429 ? 'The AI service is busy or over its quota. Try again later.' : 'The AI service rejected the request. An administrator may need to check the model in AI providers.');
     throw error;
   }
 }
