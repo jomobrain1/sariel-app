@@ -194,16 +194,22 @@ try {
   await post(responsePath,{action:'contact',note:'Spoke to her by phone',version:newest.version+2},{token:admin,status:204});
   await post(responsePath,{action:'note',note:'',version:newest.version+3},{token:admin,status:422});
   await post(responsePath,{action:'resolve',version:newest.version+3},{token:admin,status:422});
-  await post(responsePath,{action:'resolve',note:'Safe with family',version:newest.version+3},{token:admin,status:204});
+  // Resolving closes the person's other open incidents too, so their status is no longer red.
+  await post('individual/status',{requestId:randomUUID(),level:4,category:'welfare'},{token});
+  assert.equal((await call('individual/status',{token})).level,5);
+  const resolved=await post(responsePath,{action:'resolve',note:'Safe with family',version:newest.version+3},{token:admin});
+  assert(resolved.alsoClosed>=1);
+  assert.deepEqual(await mongoose.connection.collection('sariel_safety_events').countDocuments({owner:(await call('auth/me',{token})).id,active:true}),0);
+  assert.equal((await call('individual/status',{token})).status,'CONFIRMED_SAFE');
   const closed=(await call('platform/incidents?group=resolved',{token:admin})).items.find(i=>i.reference===newest.reference);
   assert.equal(closed.state,'resolved');
   assert.deepEqual(closed.signals.slice(-2).map(s=>[s.action,s.note]),[['contact','Spoke to her by phone'],['resolve','Safe with family']]);
   await post(responsePath,{action:'note',note:'Late',version:newest.version+4},{token:admin,status:409});
   const fresh=await post('auth/safety/activate',{...galleryToken,gallery:true});
   assert.notEqual(fresh.edition,edition);
-  assert.equal((await call('individual/status/history',{token})).length,reopened+1);
+  assert.equal((await call('individual/status/history',{token})).length,reopened+2);
   await activate('/jomo1',204);
-  assert.equal((await call('individual/status/history',{token})).length,reopened+1);
+  assert.equal((await call('individual/status/history',{token})).length,reopened+2);
   assert.deepEqual(await cover(),{edition:fresh.edition,cover:'valley'});
   // Revoking incident access blocks the organisation immediately.
   await put('sariel/admin/organization/'+org.id+'/access',{incidentAccess:false},{token:admin});
