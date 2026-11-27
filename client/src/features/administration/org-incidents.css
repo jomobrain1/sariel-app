@@ -1,0 +1,54 @@
+.org-page {max-width:1200px;color:#14231f}
+.org-page button,.org-page textarea {font:inherit}
+.org-page :is(button,textarea,input):focus-visible,.org-access :is(button):focus-visible {outline:3px solid #25866f;outline-offset:2px}
+.org-head h1,.org-wait h1 {margin:0;font-size:1.8rem;letter-spacing:-.03em}
+.org-head p {margin:6px 0 18px;color:#5b6b66}
+.org-wait {max-width:560px;padding:28px;border:1px solid #e3e9e6;border-radius:16px;background:#fff}
+.org-wait p {margin:10px 0 0;color:#5b6b66;line-height:1.55}
+.org-grid {display:grid;grid-template-columns:minmax(260px,1fr) minmax(0,2fr);gap:18px;align-items:start}
+.org-list,.org-pane {border:1px solid #e3e9e6;border-radius:16px;background:#fff;padding:14px}
+.org-list ul {list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.org-list li button {display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:0;border-radius:10px;background:none;text-align:left;cursor:pointer;color:inherit}
+.org-list li button:hover,.org-list li button[aria-pressed=true] {background:#eef6f2}
+.org-list li span:last-child {display:grid;gap:2px}
+.org-list small {color:#5b6b66}
+.org-dot {width:10px;height:10px;border-radius:50%;background:#9aa9a4;flex:none}
+.org-dot.state-assigned {background:#b3261e}.org-dot.state-acknowledged {background:#b07a12}.org-dot.state-resolved {background:#2f8a5f}
+.org-pages {display:flex;justify-content:space-between;margin-top:10px}
+.org-empty {margin:0;padding:24px 8px;color:#5b6b66;text-align:center}
+.org-detail {display:grid;gap:16px}
+.org-detail header {display:flex;align-items:center;justify-content:space-between;gap:10px}
+.org-detail h2 {margin:0;font-size:1.3rem}
+.org-detail h3 {margin:0 0 8px;font-size:1rem}
+.org-pill {padding:3px 10px;border-radius:999px;background:#f2f4f3;color:#5b6b66;font-size:.8rem;font-weight:700}
+.org-pill.state-assigned,.org-pill.is-off {background:#fbe4e1;color:#8f2a22}
+.org-pill.state-acknowledged {background:#fbf0d9;color:#7a4f00}
+.org-pill.state-resolved,.org-pill.is-on {background:#e4f1ea;color:#0f4d3f}
+.org-facts {display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0}
+.org-facts div {padding:10px 12px;border-radius:10px;background:#f6faf8}
+.org-facts dt {font-size:.8rem;color:#5b6b66}.org-facts dd {margin:2px 0 0;font-weight:700}
+.org-privacy {margin:0;color:#5b6b66;font-size:.88rem}
+.org-respond {display:grid;gap:10px;padding:14px;border:1px solid #e3e9e6;border-radius:12px}
+.org-actions {display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.org-actions small {color:#5b6b66}
+.org-check {display:flex;align-items:center;gap:8px}
+.org-note {display:grid;gap:6px;font-weight:700;font-size:.9rem}
+.org-note textarea {padding:10px 12px;border:1px solid #c9d3cf;border-radius:10px;resize:vertical;font-weight:400}
+.org-primary {min-height:40px;padding:0 16px;border:1px solid #0f4d3f;border-radius:10px;background:#0f4d3f;color:#fff;font-weight:700;cursor:pointer}
+.org-ghost {min-height:38px;padding:0 14px;border:1px solid #c9d3cf;border-radius:10px;background:#fff;color:#0f4d3f;font-weight:600;cursor:pointer}
+.org-ghost.is-danger {color:#a3342b;border-color:#e8c9c5}
+:is(.org-page,.org-access) button:disabled {opacity:.55;cursor:not-allowed}
+.org-error {margin:0;color:#a3342b}
+.org-timeline {list-style:none;margin:0;padding:0}
+.org-timeline li {display:grid;gap:2px;padding:10px 0;border-top:1px solid #edf1ef}
+.org-timeline small {color:#5b6b66}.org-timeline p {margin:4px 0 0}
+@media (max-width:860px){.org-grid{grid-template-columns:1fr}}
+/* Superadmin access card */
+.org-access {display:grid;gap:14px;padding:18px;border:1px solid #e3e9e6;border-radius:14px;background:#fff;color:#14231f}
+.org-access-head {display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.org-access h3 {margin:0;font-size:1.1rem}
+.org-access-head p {margin:6px 0 0;color:#5b6b66;line-height:1.5}
+.org-checks {list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.org-checks li {color:#5b6b66}.org-checks li.is-ok {color:#0f4d3f;font-weight:600}
+.org-checks small {font-weight:400;color:#5b6b66}
+.org-pill {white-space:nowrap;flex:none}

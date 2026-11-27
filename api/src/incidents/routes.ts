@@ -8,6 +8,7 @@ import { roles, defaults } from '../administration/policies.js';
 import { events, type StatusEvent } from '../individual/status.js';
 import { profiles } from '../individual/profile.js';
 import { eligible, initialIncident, severity, type Incident, type AuditEntry } from './routing.js';
+import { incidentAccess, notApproved } from './access.js';
 
 const denied=()=>createHttpError(403,'FORBIDDEN','Incident access denied.');
 const missing=()=>createHttpError(404,'NOT_FOUND','Incident unavailable.');
@@ -33,6 +34,7 @@ async function staff(ctx:Parameters<typeof auth.user>[0]){
   if(!user.tenant) throw denied();
   const access=await permissions(user.tenant.id,user.roles??[]);
   if(!access.responder) throw denied();
+  if(!(await incidentAccess(user.tenant.id)).allowed) throw notApproved();
   return {id:user.id,tenant:user.tenant.id,...access};
 }
 type Staff=Awaited<ReturnType<typeof staff>>;
@@ -51,6 +53,13 @@ async function inspect(event:StatusEvent,user:Staff){
 export default defineRoutes(router=>{
   const authenticated=[...auth.requestMiddleware,auth.middleware];
   router.group({prefix:'/api/incidents',middleware:authenticated},()=>{
+    // Lets the workspace console decide whether to show the Incidents tab.
+    router.get('/access',async ctx=>{
+      const user=auth.user(ctx);
+      if(!user.tenant) return ctx.response.success({allowed:false,verified:false,enabled:false,responder:false});
+      const [state,perm]=await Promise.all([incidentAccess(user.tenant.id),permissions(user.tenant.id,user.roles??[])]);
+      return ctx.response.success({...state,allowed:state.allowed&&perm.responder,responder:perm.responder,manager:perm.manager});
+    });
     router.get('/',async ctx=>{
       const user=await staff(ctx);
       const rows=await events().find(scope(user)).sort({createdAt:-1,_id:-1}).skip((Number(ctx.query.page)-1)*50).limit(50).toArray();
