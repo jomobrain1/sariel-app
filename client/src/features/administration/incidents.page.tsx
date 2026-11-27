@@ -6,6 +6,7 @@ import { labels, safetyApi } from '../safety/safety.api';
 import { configApi, type PlatformIncident } from './configuration.api';
 import './incidents.css';
 import { visibleProgress } from '../../lib/visible-progress';
+import { toast } from '../../lib/toast';
 
 const priorities = [{level:5,name:'Critical'},{level:4,name:'High'},{level:3,name:'Medium'},{level:2,name:'Low'}];
 const groups = [{key:'all',name:'All incidents'},{key:'open',name:'Open'},{key:'progress',name:'In progress'},{key:'resolved',name:'Resolved'}];
@@ -63,9 +64,10 @@ function ResponsePanel({item,refresh}:{item:PlatformIncident;refresh:()=>Promise
       const result=await visibleProgress(send({reference:item.reference,version:item.version,...command}).unwrap());
       const others=(result as {data?:{alsoClosed?:number}}|null)?.data?.alsoClosed ?? 0;
       setNote(''); setConfirmed(false);
-      setSaved(savedLabels[command.action]+(others ? ` ${others} other open report${others>1?'s':''} from this person ${others>1?'were':'was'} closed too.` : ''));
+      const done=savedLabels[command.action]+(others ? ` ${others} other open report${others>1?'s':''} from this person ${others>1?'were':'was'} closed too.` : '');
+      setSaved(done); toast.success(done);
     }
-    catch{/* Shown below; refresh picks up concurrent changes. */}
+    catch{ toast.error('The action couldn’t be saved. The incident may have changed; review it and try again.'); }
     try{ await refresh(); } finally { setBusy(undefined); }
   }
   const label=(action:Command['action'],text:string)=>busy===action?<><span className="incident-spinner" aria-hidden="true"/>Saving…</>:text;
@@ -134,7 +136,7 @@ export function PlatformIncidents(){
         <nav aria-label="Incident pagination"><button aria-label="Previous page" disabled={page===1} onClick={()=>setPage(page-1)}>‹</button><b aria-current="page">{page}</b>
           <button aria-label="Next page" disabled={!data?.hasNext} onClick={()=>setPage(page+1)}>›</button></nav></footer>
     </section>
-    <Modal open={creating} title="New incident" onClose={()=>setCreating(false)}>{creating && <CreateIncident done={()=>{setCreating(false);setNotice('Incident recorded.');setDraft('');setSearch('');setGroup('all');chooseLevel(0);void query.refetch();}}/>}</Modal>
+    <Modal open={creating} title="New incident" onClose={()=>setCreating(false)}>{creating && <CreateIncident done={()=>{setCreating(false);setNotice('Incident recorded.');toast.success('Incident recorded.');setDraft('');setSearch('');setGroup('all');chooseLevel(0);void query.refetch();}}/>}</Modal>
     <Modal open={!!selected} title={selected?labels[selected.level]:'Incident details'} onClose={()=>select(null)}>{selected && <><dl className="incident-detail">
       {Object.entries({'Account holder':selected.account?.name??'Unavailable',Email:selected.account?.email??'Unavailable',Organization:selected.organization??'Unassigned',Category:selected.category,...(selected.note?{Description:selected.note}:{}),...(selected.location?{Location:<IncidentLocation location={selected.location}/>}:{}),Status:selected.state,'Reported via':selected.channel==='gateway'?'Reporting link':selected.channel==='welfare'?'Missed check-in escalation':selected.channel==='image'?'Report photo':'Signed-in account','Date reported':timestamp.format(new Date(selected.createdAt)),Reference:selected.reference}).map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl><ResponsePanel key={selected.reference} item={selected} refresh={()=>query.refetch()}/></>}</Modal>
   </section>;

@@ -9,6 +9,7 @@ import { statusClass, statusLabel } from '../safety/safety.api';
 import { circleApi, permissionLabels, relationships, type CircleMember, type CircleOverview, type Permissions, type Relationship } from './circle.api';
 import { EmergencyContacts } from '../onboarding/contacts-card';
 import './circle.css';
+import { toast } from '../../lib/toast';
 
 const date = (value: string) => new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 const initials = (name: string) => name.trim().split(/[\s@.]+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || '?';
@@ -41,7 +42,7 @@ function InviteForm({ done }: { done: () => void }) {
       await invite({ email: String(form.get('email')).trim(), relationship: form.get('relationship') as Relationship, permissions }).unwrap();
       done();
     } catch (failure) {
-      setError(inviteError(failure));
+      setError(inviteError(failure)); toast.error(inviteError(failure));
     }
   }
   return <form className="circle-form" onSubmit={submit}>
@@ -298,7 +299,7 @@ export function CirclePage() {
     {!!data?.checkInRequests.length && <div className="circle-banner">
       <AccountIcon name="shield" />
       <p><strong>{data.checkInRequests.map(r => r.name).join(', ')}</strong> asked you to check in.</p>
-      <button className="circle-primary" disabled={answering.isLoading} onClick={() => void answer().unwrap().then(() => setNotice('Check-in sent. Your circle can see you’re OK.'))}>I’m OK</button>
+      <button className="circle-primary" disabled={answering.isLoading} onClick={() => void answer().unwrap().then(() => { toast.success('Check-in sent.'); setNotice('Check-in sent. Your circle can see you’re OK.'); }, () => toast.error('Check-in not sent. Check your connection and try again.'))}>I’m OK</button>
     </div>}
 
     <div className="circle-tabs" role="tablist" aria-label="Circle sections">
@@ -346,7 +347,7 @@ export function CirclePage() {
     </>}
 
     <Modal open={inviting} title="Invite to your circle" onClose={() => setInviting(false)}>
-      {inviting && <InviteForm done={() => { setInviting(false); setNotice('Invite sent. They’ll find it in their Invites tab when they sign in.'); setParams({ tab: 'invites' }, { replace: true }); }} />}
+      {inviting && <InviteForm done={() => { setInviting(false); setNotice('Invite sent. They’ll find it in their Invites tab when they sign in.'); toast.success('Invite sent.'); setParams({ tab: 'invites' }, { replace: true }); }} />}
     </Modal>
     <Modal open={!!viewing} title={viewing?.name ?? 'Circle'} onClose={() => setViewing(null)}>
       {viewing && <PersonDetail owner={viewing.owner} entry={viewing.entry} close={() => setViewing(null)} />}

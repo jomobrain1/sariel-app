@@ -5,6 +5,7 @@ import { Alert, Button, FormField, Input, Modal, Spinner } from '@tilcayo/ui';
 import { PasswordField } from '../../components/password-field';
 import { useCreateAdminUserMutation, useGetAdminRolesQuery, useSetAdminUserStatusMutation, useSetSuperadminMutation } from './admin.api';
 import { actionError } from './action-error';
+import { toast } from '../../lib/toast';
 
 function CreateUserForm({ onDone }: { onDone: () => void }) {
   const { user } = useAuth();
@@ -19,7 +20,8 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
     try {
       await create({ name: String(form.get('name')).trim(), email: String(form.get('email')).trim(), password: String(form.get('password')), roles }).unwrap();
       onDone();
-    } catch (failure) { setError(actionError(failure)); }
+      toast.success('User added.');
+    } catch (failure) { setError(actionError(failure)); toast.error(actionError(failure)); }
   }
   return <form className="tl-stack tl-admin-user-form" onSubmit={submit}>
     {error && <Alert variant="danger">{error}</Alert>}
@@ -50,7 +52,7 @@ export function UserStatusAction({ account, disabled }: { account: AdminDirector
     <Modal open={open} title={action + ' user?'} onClose={() => { if (!isLoading) setOpen(false); }}><div className="tl-stack">
       <p>{suspended ? 'Allow ' : 'Suspend '}<strong>{account.name}</strong>{suspended ? ' to sign in again. Previous sessions remain signed out.' : user?.tenant ? ' and sign them out of this workspace until reactivated. Their other workspaces are unaffected.' : ' and sign out all their sessions. They cannot sign in until reactivated.'}</p>
       {error && <Alert variant="danger">{error}</Alert>}
-      <div className="tl-flex tl-gap-2"><Button variant="outline" disabled={isLoading} onClick={() => setOpen(false)}>Cancel</Button><Button disabled={isLoading} onClick={async () => { setError(''); try { await save({ id: account.id, suspended: !suspended }).unwrap(); setOpen(false); } catch (failure) { setError(actionError(failure)); } }}>{isLoading ? 'Saving...' : action + ' user'}</Button></div>
+      <div className="tl-flex tl-gap-2"><Button variant="outline" disabled={isLoading} onClick={() => setOpen(false)}>Cancel</Button><Button disabled={isLoading} onClick={async () => { setError(''); try { await save({ id: account.id, suspended: !suspended }).unwrap(); setOpen(false); toast.success(`${account.name} ${suspended ? 'can sign in again' : 'is suspended'}.`); } catch (failure) { setError(actionError(failure)); toast.error(actionError(failure)); } }}>{isLoading ? 'Saving...' : action + ' user'}</Button></div>
     </div></Modal>
   </>;
 }
@@ -70,7 +72,7 @@ export function SuperadminAction({ account, disabled }: { account: AdminDirector
         : <><strong>{account.name}</strong> will get full access to the Sariel admin console: incidents, public reports, organisations, users and settings.</>}</p>
       {error && <Alert variant="danger">{error}</Alert>}
       <div className="tl-flex tl-gap-2"><Button variant="outline" disabled={isLoading} onClick={() => setOpen(false)}>Cancel</Button>
-        <Button disabled={isLoading} onClick={async () => { setError(''); try { await save({ id: account.id, superadmin: !granted }).unwrap(); setOpen(false); } catch (failure) { setError(actionError(failure)); } }}>{isLoading ? <><Spinner label="Saving" /> Saving…</> : action}</Button></div>
+        <Button disabled={isLoading} onClick={async () => { setError(''); try { await save({ id: account.id, superadmin: !granted }).unwrap(); setOpen(false); toast.success(`${account.name} ${granted ? 'is no longer a superadmin' : 'is now a superadmin'}.`); } catch (failure) { setError(actionError(failure)); toast.error(actionError(failure)); } }}>{isLoading ? <><Spinner label="Saving" /> Saving…</> : action}</Button></div>
     </div></Modal>
   </>;
 }

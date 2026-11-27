@@ -1,7 +1,8 @@
-type AccountIconName = 'user' | 'dashboard' | 'shield' | 'logout' | 'edit' | 'mail' | 'calendar' | 'lock' | 'monitor' | 'arrow' | 'globe' | 'search' | 'filter' | 'tag' | 'activity' | 'link' | 'bell' | 'chat' | 'image'
+type AccountIconName = 'phone' | 'user' | 'dashboard' | 'shield' | 'logout' | 'edit' | 'mail' | 'calendar' | 'lock' | 'monitor' | 'arrow' | 'globe' | 'search' | 'filter' | 'tag' | 'activity' | 'link' | 'bell' | 'chat' | 'image'
 
 export function AccountIcon({ name }: { name: AccountIconName }) {
   const paths: Record<AccountIconName, string> = {
+    phone: 'M7 2h10v20H7zM11 18h2',
     user: 'M20 21v-2a8 8 0 0 0-16 0v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',
     dashboard: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
     shield: 'm12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6z',

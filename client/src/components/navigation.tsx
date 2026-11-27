@@ -32,6 +32,7 @@ export function Navigation() {
         <NavLink to="/" end onClick={close}>Home</NavLink>
         {individual && <NavLink to="/circle" onClick={close}>Circle</NavLink>}
         {individual && <NavLink to="/assistant" onClick={close}>Assistant</NavLink>}
+        {individual && <NavLink to="/dashboard" onClick={close}>Dashboard</NavLink>}
         <NavLink to="/about" onClick={close}>About</NavLink>
       </div>
       {initialized && !isAuthenticated && <div className="starter-nav-actions">

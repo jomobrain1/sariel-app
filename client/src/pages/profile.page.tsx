@@ -5,6 +5,7 @@ import { useAuth } from '../app/auth'
 import { AccountIcon } from '../components/account-icon'
 import { authErrorMessage } from '../lib/auth-feedback'
 import { toast } from '../lib/toast'
+import { PhoneSettings } from '../features/account/phone-settings'
 
 export function ProfilePage() {
   const { user, updateProfile, updateProfileStatus, logout, logoutStatus } = useAuth()
@@ -59,6 +60,7 @@ export function ProfilePage() {
             <div><dt><AccountIcon name="calendar" /> Joined</dt><dd>{date(user?.createdAt)}</dd></div>
           </dl>
         </section>
+        <PhoneSettings />
         <section className="account-card" id="account-security"><h2>Security</h2>
           <div className="account-security-row"><span><AccountIcon name="lock" /> Password</span><button onClick={() => setResetting(!resetting)} aria-expanded={resetting} aria-controls="account-reset">Reset password <AccountIcon name="arrow" /></button></div>
           {resetting && <div id="account-reset" className="account-reset-note"><p>Continue to sign out and reset your password by email.</p><button className="tl-btn tl-btn-outline" disabled={logoutStatus.isLoading} onClick={() => void signOut(true)}>Continue to password reset</button></div>}

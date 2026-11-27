@@ -85,5 +85,10 @@ export default defineRoutes(router => {
       if(!valid||!update.modifiedCount) throw createHttpError(422,'INVALID_CODE','Request a new code.');
       return ctx.response.noContent();
     },{middleware:[limiter],validate:{body:z.strictObject({channel,code:z.string().regex(/^\d{6}$/)})}});
+    // Removes the verified phone number; SMS alerts stop until a new one is confirmed.
+    router.delete('/phone',async ctx=>{
+      await accounts().updateOne({_id:auth.user(ctx).id},{$unset:{phone:'','challenges.phone':''}});
+      return ctx.response.noContent();
+    });
   });
 });
