@@ -3,7 +3,7 @@
 Sariel deploys as **one Vercel project**. The site and the API share one domain:
 
 - The React app (`client/`) is served as static files.
-- Every `/api/*` request is rewritten to one serverless function, [`client/api/index.mjs`](../client/api/index.mjs). That function runs the whole API from `api/dist`.
+- Every `/api/*` request is rewritten to one serverless function, [`api/api/index.mjs`](../api/api/index.mjs). That function runs the whole API from `api/dist`.
 
 Because everything is on one domain:
 
