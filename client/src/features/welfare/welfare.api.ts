@@ -8,13 +8,13 @@ export type WelfareOverview = WelfareSettings & {
   events: { id: string; kind: string; at: string; detail: string | null }[];
 };
 
-const api = tilcayoApi.enhanceEndpoints({ addTagTypes: ['Welfare', 'Notifications'] });
+const api = tilcayoApi.enhanceEndpoints({ addTagTypes: ['Welfare', 'Notifications', 'Safety'] });
 export const welfareApi = api.injectEndpoints({ endpoints: b => ({
   welfare: b.query<{ data: WelfareOverview }, void>({ query: () => '/individual/welfare', providesTags: ['Welfare'] }),
   saveWelfare: b.mutation<{ data: WelfareOverview }, WelfareSettings>({
     query: body => ({ url: '/individual/welfare', method: 'PUT', body }), invalidatesTags: ['Welfare'],
   }),
   checkIn: b.mutation<{ data: WelfareOverview }, void>({
-    query: () => ({ url: '/individual/welfare/check-in', method: 'POST' }), invalidatesTags: ['Welfare', 'Notifications'],
+    query: () => ({ url: '/individual/welfare/check-in', method: 'POST' }), invalidatesTags: ['Welfare', 'Notifications', 'Safety'],
   }),
 }) });

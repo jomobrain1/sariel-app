@@ -14,6 +14,9 @@ import { welfareApi } from '../welfare/welfare.api';
 
 const levels = [2, 3, 4, 5];
 const categories = ['welfare', 'medical', 'harassment', 'labour exploitation'];
+// A level-1 event is a safe check-in, whether from the dashboard, scheduled check-ins or a circle request.
+const activity = (event: { level: number }) => event.level === 1 ? 'Checked in: I’m safe' : labels[event.level];
+const channelLabel: Record<string, string> = { gateway: 'Discreet code', image: 'Report photo', welfare: 'Missed check-in' };
 const date = (value: string) => new Date(value).toLocaleString(undefined, {dateStyle:'medium', timeStyle:'short'});
 
 function IncidentLink() {
@@ -137,7 +140,7 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
           <p>{current?.reportedAt ? `Reported ${date(current.reportedAt)}` : 'No reports yet'}</p></>}
         <div className="safety-current-foot">
           <button disabled={busy} onClick={()=>void submit({level:1,category:'welfare'})}>Confirm I’m safe</button>
-          {current && current.level>=2 && <small>Checking in keeps your active incident open.</small>}
+          {current?.openIncident && <small>{current.level === 1 ? 'Your report stays open for responders until they close it.' : 'Checking in shows you as safe. Your report stays open for responders.'}</small>}
         </div>
       </section>
       <WelfareCard/>
@@ -161,7 +164,7 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
       <section className="safety-panel safety-history" aria-labelledby="activity-title"><h2 id="activity-title">Recent activity</h2>
         {history.isError ? <button onClick={()=>void history.refetch()}>Retry loading activity</button> : history.isLoading ? <p>Loading activity…</p> : events.length ? <>
           <ul>{(showAll?events:events.slice(0,6)).map(event=><li key={event._id}><span className={'safety-dot level-'+event.level} aria-hidden="true"/>
-            <span>{labels[event.level]}{event.level>=2 && <small>{event.active?'Open incident':'Resolved incident'}</small>}</span><time dateTime={event.createdAt}>{date(event.createdAt)}</time></li>)}</ul>
+            <span>{activity(event)}{event.level>=2 ? <small>{event.active?'Open incident':'Resolved incident'}{channelLabel[event.channel] ? ' · ' + channelLabel[event.channel] : ''}</small> : event.level === 1 ? <small>Check-in</small> : null}</span><time dateTime={event.createdAt}>{date(event.createdAt)}</time></li>)}</ul>
           {events.length>6 && <button onClick={()=>setShowAll(!showAll)}>{showAll?'Show less':`Show all ${events.length}`}</button>}
         </> : <p>Your reports and check-ins will appear here.</p>}
       </section>

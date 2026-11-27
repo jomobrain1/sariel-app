@@ -27,7 +27,7 @@ export type LocationPoint = { latitude: number; longitude: number; accuracy: num
 export type LocationSettings = { sharing: boolean; intervalMinutes: number; retentionDays: number };
 export type PersonLocation = { sharing: boolean; latest: LocationPoint | null; history: LocationPoint[] };
 
-const api = tilcayoApi.enhanceEndpoints({ addTagTypes: ['Circle', 'Person', 'Updates', 'Location'] });
+const api = tilcayoApi.enhanceEndpoints({ addTagTypes: ['Circle', 'Person', 'Updates', 'Location', 'Safety'] });
 export const circleApi = api.injectEndpoints({ endpoints: b => ({
   circle: b.query<{ data: CircleOverview }, void>({ query: () => '/individual/circle', providesTags: ['Circle'] }),
   person: b.query<{ data: PersonView }, string>({ query: owner => '/individual/circle/people/' + owner, providesTags: (_r, _e, owner) => [{ type: 'Person', id: owner }] }),
@@ -45,7 +45,7 @@ export const circleApi = api.injectEndpoints({ endpoints: b => ({
     query: owner => ({ url: `/individual/circle/people/${owner}/check-in`, method: 'POST' }),
     invalidatesTags: (_r, _e, owner) => [{ type: 'Person', id: owner }],
   }),
-  answerCheckIns: b.mutation<unknown, void>({ query: () => ({ url: '/individual/circle/check-in-requests/answer', method: 'POST' }), invalidatesTags: ['Circle'] }),
+  answerCheckIns: b.mutation<unknown, void>({ query: () => ({ url: '/individual/circle/check-in-requests/answer', method: 'POST' }), invalidatesTags: ['Circle', 'Safety'] }),
   myUpdates: b.query<{ data: CircleUpdate[] }, void>({ query: () => '/individual/updates', providesTags: ['Updates'] }),
   feed: b.query<{ data: FeedItem[] }, void>({ query: () => '/individual/circle/feed', providesTags: ['Updates'] }),
   personUpdates: b.query<{ data: CircleUpdate[] }, string>({ query: owner => `/individual/circle/people/${owner}/updates`, providesTags: ['Updates'] }),

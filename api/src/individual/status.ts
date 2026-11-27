@@ -49,14 +49,20 @@ export async function recordStatus(owner:string,report:Report,channel:StatusEven
   }
   return {reference:key,level:report.level,status:levels[report.level]};
 }
-// An unresolved report outranks every routine update, including UNKNOWN.
+// An unresolved report outranks routine updates, including UNKNOWN. A safe check-in made after the
+// incident shows the person as safe, but the incident itself stays open for responders until they resolve it.
 // Pass channels to limit which reports count, e.g. to keep discreet link reports out of circle views.
 export async function currentStatus(owner:string,channels?:StatusEvent['channel'][]){
   const filter={owner,...(channels?{channel:{$in:channels}}:{})};
-  const highest=await events().find({...filter,active:true}).sort({level:-1,createdAt:-1,_id:-1}).limit(1).next();
-  const latest=highest??await events().find(filter).sort({createdAt:-1,_id:-1}).limit(1).next();
+  const [highest,newest]=await Promise.all([
+    events().find({...filter,active:true}).sort({level:-1,createdAt:-1,_id:-1}).limit(1).next(),
+    events().find(filter).sort({createdAt:-1,_id:-1}).limit(1).next(),
+  ]);
+  if(highest && newest?.level===1 && newest.createdAt>highest.createdAt)
+    return {level:1,status:levels[1],reportedAt:newest.createdAt,openIncident:true};
+  const latest=highest??newest;
   const level=latest && (latest.active || latest.level<2)?latest.level:0;
-  return {level,status:levels[level],reportedAt:latest?.createdAt??null};
+  return {level,status:levels[level],reportedAt:latest?.createdAt??null,openIncident:!!highest};
 }
 // Lets other features (welfare check-ins) react when someone confirms they're safe from the dashboard.
 const safeListeners:((owner:string)=>Promise<void>)[]=[];
@@ -71,7 +77,7 @@ export default defineRoutes(router=>{
     },{validate:{body:update}});
     router.get('/status',async ctx=>ctx.response.success(await currentStatus(auth.user(ctx).id)));
     router.get('/status/history',async ctx=>{
-      const history=await events().find({owner:auth.user(ctx).id},{projection:{_id:1,level:1,active:1,channel:1,createdAt:1,note:1}})
+      const history=await events().find({owner:auth.user(ctx).id},{projection:{_id:1,level:1,active:1,channel:1,category:1,createdAt:1,note:1}})
         .sort({createdAt:-1,_id:-1}).limit(100).toArray();
       return ctx.response.success(history);
     });
