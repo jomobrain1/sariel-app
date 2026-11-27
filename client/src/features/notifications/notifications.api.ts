@@ -6,7 +6,7 @@ export type NotificationItem = {
   createdAt: string; readAt: string | null; acknowledgedAt: string | null;
   deliveries: { channel: 'email' | 'sms'; state: DeliveryState; attempts: number; sentAt: string | null; lastError: string | null }[];
 };
-export type NotificationPage = { items: NotificationItem[]; unread: number; total: number; hasNext: boolean };
+export type NotificationPage = { items: NotificationItem[]; unread: number; total: number; hasNext: boolean; page?:number; pageSize?:number; totalPages?:number };
 export type NotificationPreferences = { email: boolean; sms: boolean };
 
 const api = tilcayoApi.enhanceEndpoints({ addTagTypes: ['Notifications', 'NotificationPreferences'] });

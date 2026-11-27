@@ -52,6 +52,8 @@
 .notification-bell.is-urgent .notification-badge {background:#b3261e}
 
 @media(max-width:860px){.note-grid{grid-template-columns:1fr}}
+.note-pages {gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.note-pages span {font-size:.82rem;color:#5b6b66}
 @media(max-width:520px){.note-item{flex-wrap:wrap}.note-actions{width:100%;padding-left:24px}}
 .starter-account .notification-bell { margin-right: 10px; vertical-align: middle; }
 @media (max-width: 520px) { .starter-account .notification-bell + .starter-profile-link { display: none; } .starter-account .notification-bell { margin-right: 2px; } }

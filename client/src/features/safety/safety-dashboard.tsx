@@ -116,8 +116,8 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
       last.current = null;
       if(value.level === 1) { const done = value.category === TRAVELLING ? 'Travelling status shared.' : 'Safe check-in recorded.'; setMessage(done); toast.success(done); }
       else {
-        setMessage('Incident report recorded.');
-        toast.success('Your circle and Sariel’s responders have been alerted.', 'Incident report sent');
+        setMessage(response.data.notificationsPending ? 'Incident recorded. Some alerts are waiting to be queued; Sariel will retry.' : 'Incident report recorded. Notification delivery is being processed.');
+        toast.success('Your report is saved. Notification delivery is being processed.', 'Incident report recorded');
         setReference(response.data.reference);
         setLevel(undefined); setCountry(''); setCategory('welfare'); setNote('');
       }

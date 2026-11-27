@@ -8,14 +8,14 @@ export const travelling = (s: Pick<Status, 'status'>) => s.status === 'TRAVELLIN
 export const statusLabel = (s: Status) => travelling(s) ? 'Travelling' : labels[s.level];
 /** CSS modifier: level-0…level-5, or level-travelling. */
 export const statusClass = (s: Status) => 'level-' + (travelling(s) ? 'travelling' : s.level);
-export type Coordinates = { latitude: number; longitude: number; accuracy: number };
+export type Coordinates = { latitude: number; longitude: number; accuracy: number; recordedAt?: string; source?: 'report' | 'last-known' };
 /** Asks the browser for the current position, for danger reports. Resolves undefined if refused, unavailable or slow. */
 export function currentPosition(timeout = 8000): Promise<Coordinates | undefined> {
   if (!('geolocation' in navigator)) return Promise.resolve(undefined);
   return new Promise(resolve => {
     const timer = setTimeout(() => resolve(undefined), timeout + 500);
     navigator.geolocation.getCurrentPosition(
-      p => { clearTimeout(timer); resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, accuracy: Math.min(p.coords.accuracy, 100_000) }); },
+      p => { clearTimeout(timer); resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, accuracy: Math.min(p.coords.accuracy, 100_000), recordedAt: new Date(p.timestamp).toISOString(), source: 'report' }); },
       () => { clearTimeout(timer); resolve(undefined); },
       { enableHighAccuracy: true, timeout, maximumAge: 60_000 });
   });
@@ -26,7 +26,7 @@ type Event = { _id: string; level: number; active: boolean; channel: 'account' |
 export const safetyApi = tilcayoApi.enhanceEndpoints({ addTagTypes: ['Safety'] }).injectEndpoints({ endpoints: b => ({
   safetyStatus: b.query<{data: Status}, string>({query: () => '/individual/status', providesTags: ['Safety']}),
   safetyHistory: b.query<{data: Event[]}, string>({query: () => '/individual/status/history', providesTags: ['Safety']}),
-  submitSafetyUpdate: b.mutation<{data: {reference: string}}, Update>({query: body => ({url:'/individual/status', method:'POST', body}), invalidatesTags: ['Safety']}),
+  submitSafetyUpdate: b.mutation<{data: {reference: string; notificationsPending?:boolean}}, Update>({query: body => ({url:'/individual/status', method:'POST', body}), invalidatesTags: ['Safety']}),
   issueIncidentLink: b.mutation<{data:{url:string}}, Omit<Update,'requestId'> & {alias?:string}>({
     query: body => ({url:'/individual/incident-link',method:'POST',body}),
   }),

@@ -42,7 +42,7 @@ function Preferences() {
       <label><input type="checkbox" checked={value.email} disabled={saving.isLoading} onChange={e => void save({ ...value, email: e.target.checked })} /><span><strong>Email</strong><small>Invites, check-in requests and reminders. Urgent alerts about your circle are always emailed.</small></span></label>
       <label><input type="checkbox" checked={value.sms} disabled={saving.isLoading} onChange={e => void save({ ...value, sms: e.target.checked })} /><span><strong>SMS</strong><small>Check-in requests and reminders. Needs a verified phone number.</small></span></label>
     </div>}
-    <p className="note-hint">Email and text messages never include names, places or danger levels.</p>
+    <p className="note-hint">Emergency alerts can include names, safety details and location where sharing is permitted.</p>
   </section>;
 }
 
@@ -53,6 +53,12 @@ export function NotificationsPage() {
   const [readAll, readingAll] = notificationsApi.useMarkAllReadMutation();
   if (user?.tenant) return <Navigate to="/dashboard" replace />;
   const data = list.currentData?.data;
+  const pages=data?.totalPages??Math.max(1,Math.ceil((data?.total??0)/(data?.pageSize??30)));
+  const pagination=data && <nav className="note-pages" aria-label="Notification pages">
+    <button className="note-ghost" disabled={page===1||list.isFetching} onClick={()=>setPage(page-1)}>Previous</button>
+    <span aria-live="polite">Page {page} of {pages} · {data.total} notifications</span>
+    <button className="note-ghost" disabled={!data.hasNext||list.isFetching} onClick={()=>setPage(page+1)}>Next</button>
+  </nav>;
   return <section className="note-page" aria-labelledby="notifications-title">
     <header className="note-head">
       <div><h1 id="notifications-title">Notifications</h1><p>{data ? data.unread ? `${data.unread} unread` : 'You’re all caught up.' : ' '}</p></div>
@@ -60,14 +66,12 @@ export function NotificationsPage() {
     </header>
     <div className="note-grid">
       <section className="note-card">
+        {pagination}
         {list.isError ? <p role="alert">Couldn’t load notifications. <button className="note-ghost" onClick={() => void list.refetch()}>Retry</button></p>
           : !data ? <p role="status">Loading…</p>
           : data.items.length ? <ul className="note-list">{data.items.map(item => <Item key={item.id} item={item} />)}</ul>
           : <div className="note-empty"><AccountIcon name="bell" /><p>Invites, check-in requests and circle alerts will appear here.</p></div>}
-        {data && (page > 1 || data.hasNext) && <nav className="note-pages" aria-label="Notification pages">
-          <button className="note-ghost" disabled={page === 1} onClick={() => setPage(page - 1)}>Newer</button>
-          <button className="note-ghost" disabled={!data.hasNext} onClick={() => setPage(page + 1)}>Older</button>
-        </nav>}
+        {data && data.items.length>5 && pagination}
       </section>
       <Preferences />
     </div>

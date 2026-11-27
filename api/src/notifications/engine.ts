@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
 import { registerJob } from '../jobs/worker.js';
 import { render, type NotificationKind } from './templates.js';
@@ -7,6 +7,7 @@ import { sendSms, smsConfigured, SmsError } from './sms.js';
 
 export type Channel = 'email' | 'sms';
 export interface Notification {
+  queueState?:'pending'|'done'; queuePlan?:Delivery[];
   _id:string; recipient:string; kind:NotificationKind; title:string; body:string; link:string;
   priority:'normal'|'emergency'; dedupeKey?:string; createdAt:Date; readAt:Date|null; acknowledgedAt:Date|null;
 }
@@ -59,30 +60,53 @@ export function externalCopy(message:{title:string; body:string}, channel:Channe
   return {subject:message.title, text:channel === 'email' ? (body || message.title) : (body ? `${message.title}. ${body}` : message.title).slice(0, 459)};
 }
 
-export async function notify(recipient:string, kind:NotificationKind, data:Record<string, string> = {}, dedupeKey?:string) {
+/** Stable IDs and setOnInsert preserve attempts and sent states during queue repair. */
+export async function queueDeliveries(queue:Delivery[]) {
+  for(const delivery of queue) {
+    if(await deliveries().findOne({notification:delivery.notification,channel:delivery.channel},{projection:{_id:1}})) continue;
+    const _id=createHash('sha256').update(delivery.notification+'/'+delivery.channel).digest('hex');
+    await deliveries().updateOne({_id},{$setOnInsert:{...delivery,_id}},{upsert:true});
+  }
+}
+async function finishQueue(note:Notification) {
+  if(note.queueState==='done') return;
+  await queueDeliveries(note.queuePlan??[]);
+  await notifications().updateOne({_id:note._id},{$set:{queueState:'done'},$unset:{queuePlan:''}});
+}
+export async function repairNotificationQueues(limit=50) {
+  const rows=await notifications().find({queueState:'pending'}).sort({createdAt:1}).limit(limit).toArray();
+  for(const note of rows) await finishQueue(note);
+}
+export async function notify(recipient:string,kind:NotificationKind,data:Record<string,string>={},dedupeKey?:string) {
   await ensureNotificationIndexes();
-  const message = render(kind, data);
-  const now = new Date();
-  const note:Notification = {_id:randomUUID(), recipient, kind, title:message.title, body:message.body, link:message.link,
-    priority:message.priority, ...(dedupeKey ? {dedupeKey} : {}), createdAt:now, readAt:null, acknowledgedAt:null};
-  try { await notifications().insertOne(note); }
-  catch (error) {
-    if (error instanceof mongoose.mongo.MongoServerError && error.code === 11000) return null;
-    throw error;
-  }
-  if (message.external.length) {
-    const [prefs, reach] = await Promise.all([preferences().findOne({_id:recipient}), contacts(recipient)]);
-    const allowed = {...defaultPreferences, ...prefs};
-    const queue:Delivery[] = [];
-    for (const channel of message.external) {
-      const target = channel === 'email' ? reach.email : reach.phone;
-      // Emergency alerts use every channel the person has set up; routine ones follow preferences.
-      if (!reach.active || !target || (message.priority !== 'emergency' && !allowed[channel])) continue;
-      queue.push({_id:randomUUID(), notification:note._id, recipient, channel, target, ...externalCopy(message, channel), link:message.link,
-        state:'queued', attempts:0, nextAttemptAt:now, lockedUntil:null, lastError:null, sentAt:null, history:[]});
+  const message=render(kind,data),now=new Date();
+  let note:Notification|null=dedupeKey?await notifications().findOne({recipient,dedupeKey}):null;
+  if(note?.queueState==='done')return null;
+  if(!note?.queuePlan) {
+    const _id=note?._id??randomUUID();
+    const [prefs,reach]=await Promise.all([preferences().findOne({_id:recipient}),contacts(recipient)]);
+    const allowed={...defaultPreferences,...prefs};
+    const queue:Delivery[]=[];
+    for(const channel of message.external) {
+      const target=channel==='email'?reach.email:reach.phone;
+      if(!reach.active||!target||(message.priority!=='emergency'&&!allowed[channel]))continue;
+      queue.push({_id:randomUUID(),notification:_id,recipient,channel,target,...externalCopy(note??message,channel),
+        link:note?.link??message.link,state:'queued',attempts:0,nextAttemptAt:now,lockedUntil:null,lastError:null,sentAt:null,history:[]});
     }
-    if (queue.length) await deliveries().insertMany(queue);
+    if(note) {
+      await notifications().updateOne({_id:note._id,queueState:{$exists:false}},{$set:{queueState:'pending',queuePlan:queue}});
+      note=await notifications().findOne({_id:note._id});
+    } else {
+      note={_id,recipient,kind,title:message.title,body:message.body,link:message.link,priority:message.priority,
+        ...(dedupeKey?{dedupeKey}:{}),createdAt:now,readAt:null,acknowledgedAt:null,queueState:'pending',queuePlan:queue};
+      try {await notifications().insertOne(note);}
+      catch(error) {
+        if(!(error instanceof mongoose.mongo.MongoServerError&&error.code===11000)||!dedupeKey)throw error;
+        note=await notifications().findOne({recipient,dedupeKey});
+      }
+    }
   }
+  if(note)await finishQueue(note);
   return note;
 }
 
@@ -124,6 +148,7 @@ async function sendThroughProvider(delivery:Delivery): Promise<Outcome> {
 /** Sends due deliveries. Safe to run on several instances at once: each delivery is claimed with a lease. */
 export async function deliveryCycle(now = new Date(), limit = 25) {
   await ensureNotificationIndexes();
+  await repairNotificationQueues();
   let processed = 0;
   for (; processed < limit; processed++) {
     const claimed = await deliveries().findOneAndUpdate(

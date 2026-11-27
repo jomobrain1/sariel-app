@@ -16,7 +16,8 @@ const mapLink = (event:StatusEvent) => event.location ? `https://maps.google.com
 function details(event:StatusEvent, withLocation:boolean, noteLength:number) {
   const map = withLocation ? mapLink(event) : undefined;
   return {level:levelNames[event.level] ?? 'needs help', time:when(event.createdAt), ...(event.note ? {note:event.note.slice(0, noteLength)} : {}),
-    ...(map ? {map, mapSource:event.location!.source === 'report' ? 'at the time of the report' : 'last shared location'} : {})};
+    ...(map ? {map, mapSource:(event.location!.source === 'report' ? 'report location' : 'last shared location')+
+      ', captured '+when(event.location!.recordedAt)+', accuracy +/-'+Math.round(event.location!.accuracy)+' m'} : {})};
 }
 // Every new incident alerts the platform administrators by email and SMS, at every level, always with the location:
 // they may need to involve the authorities.
@@ -66,13 +67,13 @@ export default defineRoutes(router => {
       await claimContactAlerts(recipient, auth.user(ctx).email);
       const page = Number(ctx.query.page);
       const [items, unread, total] = await Promise.all([
-        notifications().find({recipient}).sort({createdAt:-1}).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).toArray(),
+        notifications().find({recipient}).sort({createdAt:-1,_id:-1}).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).toArray(),
         notifications().countDocuments({recipient, readAt:null}),
         notifications().countDocuments({recipient}),
       ]);
       const sent = items.length ? await deliveries().find({notification:{$in:items.map(n => n._id)}},
         {projection:{notification:1, channel:1, state:1, attempts:1, sentAt:1, lastError:1}}).toArray() : [];
-      return ctx.response.success({unread, total, hasNext:page * PAGE_SIZE < total, items:items.map(n => ({
+      return ctx.response.success({unread, total, page, pageSize:PAGE_SIZE, totalPages:Math.max(1,Math.ceil(total/PAGE_SIZE)), hasNext:page * PAGE_SIZE < total, items:items.map(n => ({
         id:n._id, kind:n.kind, title:n.title, body:n.body, link:n.link, priority:n.priority, createdAt:n.createdAt,
         readAt:n.readAt, acknowledgedAt:n.acknowledgedAt,
         // Delivery history shows whether a message left Sariel; acknowledgement shows a person acted on it.

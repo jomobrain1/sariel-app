@@ -1,10 +1,10 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
 import { createHttpError, defineRoutes } from '@tilcayo/core';
 import { z } from 'zod';
 import { auth } from '../auth.js';
 import { individual } from '../individual/account.js';
-import { deliveries, notifications, notify, type Delivery } from '../notifications/engine.js';
+import { queueDeliveries, notifications, notify, type Delivery } from '../notifications/engine.js';
 import { render } from '../notifications/templates.js';
 import { names } from './members.js';
 
@@ -45,10 +45,10 @@ export async function alertEmergencyContacts(owner:string, detail:{level:string;
       await notify(String(account._id), 'contact-alert', {name, detail:message.body.replace(`${name} listed you as an emergency contact. `, '')}, dedupeKey);
       return;
     }
-    const alertId = randomUUID();
+    const alertId = createHash('sha256').update(dedupeKey).digest('hex');
     try {
       await alerts().insertOne({_id:alertId, contact:contact._id, owner, ...(contact.email ? {email:contact.email} : {}), title:message.title, body:message.body, createdAt:new Date(), claimedBy:null});
-    } catch { return; }
+    } catch(error) { if(!(error instanceof mongoose.mongo.MongoServerError&&error.code===11000))throw error; }
     const now = new Date();
     const queue:Delivery[] = [];
     const base = {notification:'contact:' + alertId, recipient:'contact:' + contact._id, subject:message.subject, state:'queued' as const,
@@ -57,7 +57,7 @@ export async function alertEmergencyContacts(owner:string, detail:{level:string;
       text:'Someone who listed you as an emergency contact on Sariel may need help. To see who and what happened, create a free Sariel account or sign in with this email address.'});
     if (contact.phone) queue.push({_id:randomUUID(), ...base, channel:'sms', target:contact.phone,
       text:'Someone who listed you as an emergency contact on Sariel may need help. Sign in to Sariel with your email to see details.'});
-    if (queue.length) await deliveries().insertMany(queue);
+    await queueDeliveries(queue);
   }));
 }
 
@@ -70,7 +70,7 @@ export async function claimContactAlerts(userId:string, email:string) {
     try {
       await notifications().insertOne({_id:randomUUID(), recipient:userId, kind:'contact-alert', title:alert.title, body:alert.body,
         link:'/notifications', priority:'emergency', dedupeKey:'contact-alert-claim:' + alert._id, createdAt:alert.createdAt, readAt:null, acknowledgedAt:null});
-    } catch { /* Already claimed. */ }
+    } catch(error) { if(!(error instanceof mongoose.mongo.MongoServerError&&error.code===11000))throw error; }
     await alerts().updateOne({_id:alert._id}, {$set:{claimedBy:userId}});
   }
 }
