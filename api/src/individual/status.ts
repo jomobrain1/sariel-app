@@ -11,18 +11,20 @@ export const levels=['UNKNOWN','CONFIRMED_SAFE','ASSISTANCE_NEEDED','SAFETY_CONC
 export const reportInput=z.strictObject({
   requestId:z.uuid(), category:label.default('welfare'), country:country.optional(),
 });
-const update=reportInput.extend({level:z.number().int().min(0).max(5)});
+const update=reportInput.extend({level:z.number().int().min(0).max(5),
+  // Optional description of what is happening, shown to the administrators handling the incident.
+  note:z.string().trim().max(1000).optional()});
 export type Report=z.output<typeof update>;
 export interface StatusEvent {
   _id:string; owner:string; level:number; channel:'account'|'gateway'|'welfare'|'image'; createdAt:Date;
-  incident?:Incident; active:boolean; category:string; country?:string; fingerprint:string;
+  incident?:Incident; active:boolean; category:string; country?:string; note?:string; fingerprint:string;
 }
 export const events=()=>mongoose.connection.collection<StatusEvent>('sariel_safety_events');
 export async function recordStatus(owner:string,report:Report,channel:StatusEvent['channel']){
   const key=createHash('sha256').update(owner+'/'+report.requestId).digest('hex');
-  const fingerprint=JSON.stringify([report.level,report.category,report.country??null,channel]);
+  const fingerprint=JSON.stringify([report.level,report.category,report.country??null,channel,...(report.note?[report.note]:[])]);
   const event:StatusEvent={_id:key,owner,level:report.level,category:report.category,country:report.country,
-    active:report.level>=2,channel,createdAt:new Date(),fingerprint};
+    active:report.level>=2,channel,createdAt:new Date(),fingerprint,...(report.note?{note:report.note}:{})};
   if(event.active) event.incident=pendingIncident(event);
   try { await events().insertOne(event); }
   catch(error){
@@ -64,7 +66,7 @@ export default defineRoutes(router=>{
     },{validate:{body:update}});
     router.get('/status',async ctx=>ctx.response.success(await currentStatus(auth.user(ctx).id)));
     router.get('/status/history',async ctx=>{
-      const history=await events().find({owner:auth.user(ctx).id},{projection:{_id:1,level:1,active:1,channel:1,createdAt:1}})
+      const history=await events().find({owner:auth.user(ctx).id},{projection:{_id:1,level:1,active:1,channel:1,createdAt:1,note:1}})
         .sort({createdAt:-1,_id:-1}).limit(100).toArray();
       return ctx.response.success(history);
     });

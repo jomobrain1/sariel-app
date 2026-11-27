@@ -56,6 +56,7 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
   const [level,setLevel] = useState<number>();
   const [category,setCategory] = useState('welfare');
   const [country,setCountry] = useState('');
+  const [note,setNote] = useState('');
   const [busy,setBusy] = useState(false);
   const pending = useRef(false);
   const last = useRef<Update | null>(null);
@@ -65,13 +66,13 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
   const current = status.currentData?.data;
   const events = history.currentData?.data ?? [];
 
-  async function submit(value: Pick<Update,'level'|'country'|'category'>){
+  async function submit(value: Pick<Update,'level'|'country'|'category'|'note'>){
     if (pending.current) return;
     pending.current = true;
     setBusy(true); setMessage(''); setReference('');
     try {
       const previous = last.current;
-      if (!previous || previous.level !== value.level || previous.country !== value.country || previous.category !== value.category)
+      if (!previous || previous.level !== value.level || previous.country !== value.country || previous.category !== value.category || previous.note !== value.note)
         last.current = {...value, requestId:crypto.randomUUID()};
       const response = await send(last.current!).unwrap();
       last.current = null;
@@ -79,7 +80,7 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
       else {
         setMessage('Incident report recorded.');
         setReference(response.data.reference);
-        setLevel(undefined); setCountry(''); setCategory('welfare');
+        setLevel(undefined); setCountry(''); setCategory('welfare'); setNote('');
       }
       void status.refetch(); void history.refetch();
       // A safe check-in also resets scheduled welfare check-ins.
@@ -90,7 +91,7 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
   }
   function report(e:FormEvent){
     e.preventDefault();
-    if(level !== undefined) void submit({level,category:category.trim(),country:country.trim().toUpperCase() || undefined});
+    if(level !== undefined) void submit({level,category:category.trim(),country:country.trim().toUpperCase() || undefined,note:note.trim() || undefined});
   }
 
   return <section className="safety-dashboard">
@@ -109,6 +110,8 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
             {categories.map(c=><option key={c} value={c}>{c[0].toUpperCase()+c.slice(1)}</option>)}</select></label>
           <label>Country code (optional)<input maxLength={2} pattern="[A-Za-z]{2}" placeholder="e.g. KE" autoCapitalize="characters" disabled={busy} value={country} onChange={e=>setCountry(e.target.value.toUpperCase())}/></label>
         </div>
+        <label className="safety-note">What’s happening? (optional)<textarea rows={3} maxLength={1000} disabled={busy} value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. My employer has taken my passport and won’t let me leave."/>
+          <small>{1000 - note.length} characters left · Shared with the responders handling your report.</small></label>
         <button className="safety-primary" type="submit" disabled={busy}>Submit incident report</button>
       </form>
       <div className="safety-side">

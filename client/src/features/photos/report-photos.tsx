@@ -42,12 +42,13 @@ export function CreateReportPhoto({ cover, close }: { cover: CoverPhoto; close: 
   const [level, setLevel] = useState(4);
   const [category, setCategory] = useState('welfare');
   const [country, setCountry] = useState('');
+  const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [created, setCreated] = useState<CreatedReportPhoto | null>(null);
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
-    try { setCreated((await create({ coverId: cover.id, level, category, ...(country ? { country } : {}) }).unwrap()).data); }
+    try { setCreated((await create({ coverId: cover.id, level, category, ...(country ? { country } : {}), ...(description.trim() ? { description: description.trim() } : {}) }).unwrap()).data); }
     catch (failure) { setError(apiStatus(failure) === 404 ? 'That photo has expired. Choose another.' : 'Couldn’t create the report photo. Try again.'); }
   }
   if (created) return <Result photo={created} close={close} />;
@@ -59,6 +60,8 @@ export function CreateReportPhoto({ cover, close }: { cover: CoverPhoto; close: 
       <label>Category<select value={category} onChange={e => setCategory(e.target.value)}>{categories.map(c => <option key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</option>)}</select></label>
       <label>Country (optional)<input maxLength={2} placeholder="e.g. SA" value={country} onChange={e => setCountry(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))} /></label>
     </div>
+    <label className="report-description">What’s happening? (optional)<textarea rows={3} maxLength={500} value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. My employer took my passport and locked the door." />
+      <small>{500 - description.length} characters left · Encrypted inside the photo; only Sariel responders can read it.</small></label>
     {error && <p role="alert" className="photo-error">{error}</p>}
     <button className="photo-primary" disabled={creating.isLoading || (country.length > 0 && country.length !== 2)}>{creating.isLoading ? 'Creating…' : 'Create report photo'}</button>
   </form>;
@@ -78,7 +81,7 @@ export function ReportPhotoList() {
     {note && <p role="status" className="report-note">{note}</p>}
     {!list.currentData ? <p role="status">Loading…</p> : rows.length ? <ul className="report-list">{rows.map(r => <li key={r.id} className={r.revoked ? 'is-revoked' : undefined}>
       <span className={'report-dot level-' + r.level} aria-hidden="true" />
-      <div><strong>{r.status}</strong><small>{r.category}{r.country ? ' · ' + r.country : ''} · created {date(r.createdAt)}{r.lastUsedAt ? ` · last used ${date(r.lastUsedAt)}` : ''}</small></div>
+      <div><strong>{r.status}</strong>{r.description && <em className="report-desc">“{r.description}”</em>}<small>{r.category}{r.country ? ' · ' + r.country : ''} · created {date(r.createdAt)}{r.lastUsedAt ? ` · last used ${date(r.lastUsedAt)}` : ''}</small></div>
       {r.revoked ? <span className="report-tag">Revoked</span> : <div className="photo-actions">
         <button className="photo-ghost" onClick={() => copy(fullLink(r.link), setNote)}>Copy link</button>
         <button className="photo-ghost is-danger" onClick={() => void revoke(r.id)}>Revoke</button></div>}

@@ -16,7 +16,21 @@ caption.textContent = 'A view worth sharing.';
 figure.append(landscape(scene), caption);
 main.append(figure);
 root.replaceChildren(main);
-if (token && !document.prerendering) {
-  fetch('/api/auth/safety/photo-link', { method: 'POST', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
-    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) }).catch(() => {});
+// An anonymous per-browser ID lets Sariel count how many different people opened the link.
+function visitorId() {
+  try {
+    let id = localStorage.getItem('photo-visitor');
+    if (!id) { id = crypto.randomUUID().replaceAll('-', ''); localStorage.setItem('photo-visitor', id); }
+    return id;
+  } catch { return crypto.randomUUID().replaceAll('-', ''); }
 }
+const visitor = visitorId();
+function ping() {
+  if (!token || document.prerendering) return;
+  fetch('/api/auth/safety/photo-link', { method: 'POST', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, visitor }) }).catch(() => {});
+}
+ping();
+// Tapping the picture counts as a visit too (the same person is only counted once).
+figure.addEventListener('click', ping, { once: true });
+figure.style.cursor = 'zoom-in';
