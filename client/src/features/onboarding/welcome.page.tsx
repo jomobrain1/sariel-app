@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { useAuth } from '../../app/auth';
 import { AccountIcon } from '../../components/account-icon';
-import { apiStatus } from '../../lib/api-status';
+import { inviteError } from '../../lib/api-status';
 import { circleApi } from '../circle/circle.api';
 import { EmergencyContacts } from './contacts-card';
 import { onboardingApi } from './onboarding.api';
@@ -51,7 +51,7 @@ function Circle({ next, back }: { next: () => void; back: () => void }) {
     try {
       await invite({ email: email.trim(), relationship, permissions: { status: true, location: false, updates: true } }).unwrap();
       setSent([...sent, { email: email.trim(), relationship }]); setEmail('');
-    } catch (failure) { setError(apiStatus(failure) === 409 ? 'Already invited.' : apiStatus(failure) === 422 ? 'Check the email. You can’t invite yourself.' : 'Couldn’t send the invite.'); }
+    } catch (failure) { setError(inviteError(failure)); }
   }
   return <div className="welcome-step">
     <p className="welcome-kicker">Step 2 of 3</p>
