@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { auth } from '../auth.js';
 import { individual } from '../individual/account.js';
 import { names, onCircleEvent, recipients } from '../circle/members.js';
+import { alertEmergencyContacts, claimContactAlerts } from '../circle/contacts.js';
 import { defaultPreferences, deliveries, ensureNotificationIndexes, notifications, notify, preferences } from './engine.js';
 import mongoose from 'mongoose';
 import { onIncidentCreated } from '../individual/status.js';
@@ -19,6 +20,11 @@ onIncidentCreated(async event => {
 });
 // When someone reports danger in the app, their circle (members with status access) is alerted too.
 // Discreet one-tap link reports stay hidden from the circle; report photos alert it separately.
+// Emergency contacts (who may not use Sariel) are told about in-app reports and report photos.
+onIncidentCreated(async event => {
+  if (event.channel !== 'account' && event.channel !== 'image') return;
+  await alertEmergencyContacts(event.owner, {level:levelNames[event.level] ?? 'needs help', ...(event.note ? {note:event.note.slice(0, 200)} : {})}, event._id);
+});
 onIncidentCreated(async event => {
   if (event.channel !== 'account') return;
   const name = (await names([event.owner])).get(event.owner) ?? 'Someone';
@@ -48,6 +54,7 @@ export default defineRoutes(router => {
     router.get('/notifications', async ctx => {
       await ensureNotificationIndexes();
       const recipient = auth.user(ctx).id;
+      await claimContactAlerts(recipient, auth.user(ctx).email);
       const page = Number(ctx.query.page);
       const [items, unread, total] = await Promise.all([
         notifications().find({recipient}).sort({createdAt:-1}).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).toArray(),
@@ -67,6 +74,7 @@ export default defineRoutes(router => {
     router.get('/notifications/unread', async ctx => {
       await ensureNotificationIndexes();
       const recipient = auth.user(ctx).id;
+      await claimContactAlerts(recipient, auth.user(ctx).email);
       const [unread, urgent] = await Promise.all([
         notifications().countDocuments({recipient, readAt:null}),
         notifications().countDocuments({recipient, priority:'emergency', acknowledgedAt:null}),

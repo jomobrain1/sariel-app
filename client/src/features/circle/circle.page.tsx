@@ -7,6 +7,7 @@ import { AccountIcon } from '../../components/account-icon';
 import { Toggle } from '../../components/toggle';
 import { labels } from '../safety/safety.api';
 import { circleApi, permissionLabels, relationships, type CircleMember, type CircleOverview, type Permissions, type Relationship } from './circle.api';
+import { EmergencyContacts } from '../onboarding/contacts-card';
 import './circle.css';
 
 const date = (value: string) => new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -335,6 +336,12 @@ export function CirclePage() {
           : <div className="circle-empty"><AccountIcon name="shield" /><p>When someone adds you to their circle, they’ll appear here.</p></div>}
       </section>
     </div>
+
+    <section className="circle-card circle-contacts">
+      <h2>Emergency contacts</h2>
+      <p className="circle-sub">People to tell if you report danger, even if they don’t use Sariel.</p>
+      <EmergencyContacts />
+    </section>
 
     <CircleFeed />
     </>}

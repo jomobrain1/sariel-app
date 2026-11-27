@@ -8,6 +8,7 @@ import { onSafeCheckIn, recordStatus } from '../individual/status.js';
 import { access, closeCheckInRequests, names, onCircleEvent, recipients } from '../circle/members.js';
 import { lastKnownLocation } from '../circle/location.js';
 import { notify } from '../notifications/engine.js';
+import { alertEmergencyContacts } from '../circle/contacts.js';
 import { registerJob } from '../jobs/worker.js';
 
 // A missed check-in raises a concern; it is never treated as proof of danger. Status becomes
@@ -95,6 +96,7 @@ export async function welfareCycle(now = new Date(), limit = 50) {
         detail += ` Last known location: ${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)} (±${Math.round(location.accuracy)} m) at ${when(location.recordedAt)}.`;
       await notify(member, 'welfare-concern', {name, detail}, `welfare-concern:${owner}:${row.dueAt.getTime()}`);
     }));
+    await alertEmergencyContacts(owner, {level:'Missed check-in (status Unknown)'}, `welfare:${owner}:${row.dueAt.getTime()}`);
   }
   // 3. Optional escalation to responders, only when configured.
   for (; steps < limit; steps++) {
