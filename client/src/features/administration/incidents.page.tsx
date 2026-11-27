@@ -37,6 +37,13 @@ const signalLabels:Record<string,string>={
   acknowledge:'Report acknowledged',dispatch:'Dispatch confirmed',contact:'Person contacted',note:'Note added',refer:'Referred',resolve:'Resolved'
 };
 type Command={action:'acknowledge'}|{action:'dispatch';confirmed:true}|{action:'contact';note?:string}|{action:'note';note:string}|{action:'resolve';note:string};
+// Where the person was: sent with the report, or their last shared point. Superadmins always see it.
+function IncidentLocation({location}:{location:NonNullable<PlatformIncident['location']>}){
+  const at=location.latitude.toFixed(5)+','+location.longitude.toFixed(5);
+  return <span className="incident-location"><a href={'https://maps.google.com/?q='+at} target="_blank" rel="noreferrer">Open in Maps ↗</a>
+    <small>{location.source==='report'?'Sent with the report':'Last shared location'} · {timestamp.format(new Date(location.recordedAt))} · within {Math.round(location.accuracy)} m</small></span>;
+}
+const savedLabels:Record<Command['action'],string>={acknowledge:'Report acknowledged.',contact:'Saved: person contacted.',dispatch:'Dispatch confirmed.',note:'Note added.',resolve:'Incident resolved.'};
 function ResponsePanel({item,refresh}:{item:PlatformIncident;refresh:()=>Promise<unknown>}){
   const [send,result]=configApi.useRespondToIncidentMutation();
   const [confirmed,setConfirmed]=useState(false);
@@ -45,32 +52,38 @@ function ResponsePanel({item,refresh}:{item:PlatformIncident;refresh:()=>Promise
   const dispatched=item.signals.some(s=>s.action==='dispatch');
   const open=item.state!=='resolved' && item.version!==undefined;
   const text=note.trim();
+  // Which action is running: its button shows progress and every action stays locked until the timeline refreshes.
+  const [busy,setBusy]=useState<Command['action']>();
+  const [saved,setSaved]=useState('');
   async function run(command:Command){
-    if(item.version===undefined)return;
-    try{ await send({reference:item.reference,version:item.version,...command}).unwrap(); setNote(''); setConfirmed(false); }
+    if(item.version===undefined || busy)return;
+    setBusy(command.action); setSaved('');
+    try{ await send({reference:item.reference,version:item.version,...command}).unwrap(); setNote(''); setConfirmed(false); setSaved(savedLabels[command.action]); }
     catch{/* Shown below; refresh picks up concurrent changes. */}
-    await refresh();
+    try{ await refresh(); } finally { setBusy(undefined); }
   }
+  const label=(action:Command['action'],text:string)=>busy===action?<><span className="incident-spinner" aria-hidden="true"/>Saving…</>:text;
   const actorOf=(s:PlatformIncident['signals'][number])=>s.actorName || (s.action.startsWith('gallery-')||s.action==='photo-link-spread'?'Reporting link':'Responder');
   return <section className="incident-response"><h3>Response timeline</h3>
     {item.signals.length ? <ol>{item.signals.map((s,i)=><li key={i}><strong>{signalLabels[s.action]??s.action}</strong>{s.note && <p>{s.note}</p>}<small>{actorOf(s)} · {timestamp.format(new Date(s.at))}</small></li>)}</ol> : <p>Awaiting a response.</p>}
     {open && <div className="incident-act">
       <h3>Actions</h3>
       <div className="incident-act-row">
-        {!seen && <button className="incident-primary" disabled={result.isLoading} onClick={()=>void run({action:'acknowledge'})}>Acknowledge report</button>}
-        <button className="incident-secondary" disabled={result.isLoading} onClick={()=>void run({action:'contact',...(text?{note:text}:{})})}>Person contacted</button>
+        {!seen && <button className="incident-primary" disabled={!!busy} aria-busy={busy==='acknowledge'} onClick={()=>void run({action:'acknowledge'})}>{label('acknowledge','Acknowledge report')}</button>}
+        <button className="incident-secondary" disabled={!!busy} aria-busy={busy==='contact'} onClick={()=>void run({action:'contact',...(text?{note:text}:{})})}>{label('contact','Person contacted')}</button>
       </div>
       {seen && !dispatched && <div className="incident-act-row">
         <label className="incident-check"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> A responder is on the way</label>
-        <button className="incident-primary" disabled={result.isLoading || !confirmed} onClick={()=>void run({action:'dispatch',confirmed:true})}>Confirm dispatch</button></div>}
+        <button className="incident-primary" disabled={!!busy || !confirmed} aria-busy={busy==='dispatch'} onClick={()=>void run({action:'dispatch',confirmed:true})}>{label('dispatch','Confirm dispatch')}</button></div>}
       <label className="incident-note">Note<textarea rows={3} maxLength={1500} value={note} onChange={e=>setNote(e.target.value)} placeholder="Who you spoke to, what was done, what happens next…"/></label>
       <div className="incident-act-row">
-        <button className="incident-secondary" disabled={result.isLoading || !text} onClick={()=>void run({action:'note',note:text})}>Add note</button>
-        <button className="incident-resolve" disabled={result.isLoading || !text} onClick={()=>{ if(confirm('Resolve this incident? It will close for everyone handling it.')) void run({action:'resolve',note:text}); }}>Resolve with note</button>
+        <button className="incident-secondary" disabled={!!busy || !text} aria-busy={busy==='note'} onClick={()=>void run({action:'note',note:text})}>{label('note','Add note')}</button>
+        <button className="incident-resolve" disabled={!!busy || !text} aria-busy={busy==='resolve'} onClick={()=>{ if(confirm('Resolve this incident? It will close for everyone handling it.')) void run({action:'resolve',note:text}); }}>{label('resolve','Resolve with note')}</button>
       </div>
       <small>Write a note first to resolve. “Person contacted” saves the note with it if you write one.</small>
     </div>}
-    {result.isError && <p role="alert">The action couldn’t be saved. The incident may have changed; review it and try again.</p>}
+    {saved && !busy && !result.isError && <p className="incident-saved" role="status">✓ {saved}</p>}
+    {result.isError && !busy && <p role="alert">The action couldn’t be saved. The incident may have changed; review it and try again.</p>}
   </section>;
 }
 export function PlatformIncidents(){
@@ -117,6 +130,6 @@ export function PlatformIncidents(){
     </section>
     <Modal open={creating} title="New incident" onClose={()=>setCreating(false)}>{creating && <CreateIncident done={()=>{setCreating(false);setNotice('Incident recorded.');setDraft('');setSearch('');setGroup('all');chooseLevel(0);void query.refetch();}}/>}</Modal>
     <Modal open={!!selected} title={selected?labels[selected.level]:'Incident details'} onClose={()=>select(null)}>{selected && <><dl className="incident-detail">
-      {Object.entries({'Account holder':selected.account?.name??'Unavailable',Email:selected.account?.email??'Unavailable',Organization:selected.organization??'Unassigned',Category:selected.category,...(selected.note?{Description:selected.note}:{}),Status:selected.state,'Reported via':selected.channel==='gateway'?'Reporting link':selected.channel==='welfare'?'Missed check-in escalation':selected.channel==='image'?'Report photo':'Signed-in account','Date reported':timestamp.format(new Date(selected.createdAt)),Reference:selected.reference}).map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl><ResponsePanel key={selected.reference} item={selected} refresh={()=>query.refetch()}/></>}</Modal>
+      {Object.entries({'Account holder':selected.account?.name??'Unavailable',Email:selected.account?.email??'Unavailable',Organization:selected.organization??'Unassigned',Category:selected.category,...(selected.note?{Description:selected.note}:{}),...(selected.location?{Location:<IncidentLocation location={selected.location}/>}:{}),Status:selected.state,'Reported via':selected.channel==='gateway'?'Reporting link':selected.channel==='welfare'?'Missed check-in escalation':selected.channel==='image'?'Report photo':'Signed-in account','Date reported':timestamp.format(new Date(selected.createdAt)),Reference:selected.reference}).map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl><ResponsePanel key={selected.reference} item={selected} refresh={()=>query.refetch()}/></>}</Modal>
   </section>;
 }

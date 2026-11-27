@@ -9,7 +9,7 @@ import { RoleAssignment } from './access.page';
 import { useAdminAccess } from './permissions';
 import { DeleteButton } from './delete-button';
 import { useDeleteAdminUserMutation } from './admin.api';
-import { CreateUserButton, UserStatusAction } from './user-management';
+import { CreateUserButton, SuperadminAction, UserStatusAction } from './user-management';
 
 export function UsersPage({ overview = false }: { overview?: boolean }) {
   const { user } = useAuth();
@@ -39,7 +39,7 @@ export function UsersPage({ overview = false }: { overview?: boolean }) {
     </form>
     {isError ? <div className="tl-admin-empty"><Alert variant="danger">Unable to load users. Check your connection and try Refresh.</Alert></div>
       : directory ? <AdminUsersTable users={directory.items} renderActions={account => <div className="tl-admin-row-actions">
-        {isAdmin && <>{(!user?.tenancyEnabled || !!user?.tenant) && <RoleAssignment account={account} />}<UserStatusAction account={account} disabled={account.id === user?.id} /></>}
+        {isAdmin && <>{(!user?.tenancyEnabled || !!user?.tenant) ? <RoleAssignment account={account} /> : user?.platformRole === 'superadmin' && <SuperadminAction account={account} disabled={account.id === user?.id} />}<UserStatusAction account={account} disabled={account.id === user?.id} /></>}
         <DeleteButton iconOnly name={account.name} disabled={account.id === user?.id || (!!account.roles?.includes('admin') && !isAdmin)} onDelete={() => remove(account.id).unwrap()} />
       </div>} />
       : <TableSkeleton label="Loading users" columns={6} />}

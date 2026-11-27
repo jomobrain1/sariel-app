@@ -5,7 +5,7 @@ import { Modal } from '@tilcayo/ui';
 import { useAuth } from '../../app/auth';
 import { AccountIcon } from '../../components/account-icon';
 import { Toggle } from '../../components/toggle';
-import { labels, safetyApi, type Update } from './safety.api';
+import { currentPosition, labels, safetyApi, statusClass, statusLabel, TRAVELLING, travelling, type Update } from './safety.api';
 import './safety-dashboard.css';
 import '../onboarding/onboarding.css';
 import { useAppDispatch } from '../../app/hooks';
@@ -15,7 +15,8 @@ import { welfareApi } from '../welfare/welfare.api';
 const levels = [2, 3, 4, 5];
 const categories = ['welfare', 'medical', 'harassment', 'labour exploitation'];
 // A level-1 event is a safe check-in, whether from the dashboard, scheduled check-ins or a circle request.
-const activity = (event: { level: number }) => event.level === 1 ? 'Checked in: I’m safe' : labels[event.level];
+const activity = (event: { level: number; category?: string }) => event.level === 1 ? (event.category === TRAVELLING ? 'Travelling' : 'Checked in: I’m safe') : labels[event.level];
+const dotClass = (event: { level: number; category?: string }) => event.level === 1 && event.category === TRAVELLING ? 'level-travelling' : 'level-' + event.level;
 const channelLabel: Record<string, string> = { gateway: 'Discreet code', image: 'Report photo', welfare: 'Missed check-in' };
 const date = (value: string) => new Date(value).toLocaleString(undefined, {dateStyle:'medium', timeStyle:'short'});
 
@@ -103,11 +104,16 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
     setBusy(true); setMessage(''); setReference('');
     try {
       const previous = last.current;
-      if (!previous || previous.level !== value.level || previous.country !== value.country || previous.category !== value.category || previous.note !== value.note)
-        last.current = {...value, requestId:crypto.randomUUID()};
+      if (!previous || previous.level !== value.level || previous.country !== value.country || previous.category !== value.category || previous.note !== value.note) {
+        // Danger reports include where the person is (responders always see it; the circle only if allowed).
+        // If location is refused or slow, the report still goes, using the last shared location if any.
+        if (value.level >= 2) setMessage('Getting your location…');
+        const location = value.level >= 2 ? await currentPosition() : undefined;
+        last.current = {...value, requestId:crypto.randomUUID(), ...(location ? {location} : {})};
+      }
       const response = await send(last.current!).unwrap();
       last.current = null;
-      if(value.level === 1) setMessage('Safe check-in recorded.');
+      if(value.level === 1) setMessage(value.category === TRAVELLING ? 'Travelling status shared.' : 'Safe check-in recorded.');
       else {
         setMessage('Incident report recorded.');
         setReference(response.data.reference);
@@ -134,12 +140,15 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
     <header className="safety-heading"><h1>{firstName ? `Hi ${firstName}` : 'Your safety'}</h1><p>Your safety at a glance. Report, check in, or reach your circle.</p></header>
     {message && <div className="safety-feedback" role="status">{message}{reference && <Toggle icon="tag" title="Report reference"><code>{reference}</code></Toggle>}</div>}
     <div className="safety-layout">
-      <section className={'safety-panel safety-current level-' + (current?.level ?? 0)} aria-labelledby="status-title">
+      <section className={'safety-panel safety-current ' + (current ? statusClass(current) : 'level-1')} aria-labelledby="status-title">
         <span className="safety-current-icon"><AccountIcon name="shield"/></span><h2 id="status-title">Current safety status</h2>
-        {status.isError ? <button onClick={()=>void status.refetch()}>Retry loading status</button> : <><strong>{current?labels[current.level]:'Loading…'}</strong>
-          <p>{current?.reportedAt ? `Reported ${date(current.reportedAt)}` : 'No reports yet'}</p></>}
+        {status.isError ? <button onClick={()=>void status.refetch()}>Retry loading status</button> : <><strong>{current?statusLabel(current):'Loading…'}</strong>
+          <p>{current?.reportedAt ? `Updated ${date(current.reportedAt)}` : 'No reports yet'}</p></>}
         <div className="safety-current-foot">
-          <button disabled={busy} onClick={()=>void submit({level:1,category:'welfare'})}>Confirm I’m safe</button>
+          <div className="safety-current-actions">
+            <button disabled={busy} onClick={()=>void submit({level:1,category:'welfare'})}>Confirm I’m safe</button>
+            {!(current && travelling(current)) && <button className="safety-travel" disabled={busy} onClick={()=>void submit({level:1,category:TRAVELLING})}>I’m travelling</button>}
+          </div>
           {current && current.level>=2 && <small>Checking in keeps your active incident open.</small>}
         </div>
       </section>
@@ -163,8 +172,8 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
       </form>
       <section className="safety-panel safety-history" aria-labelledby="activity-title"><h2 id="activity-title">Recent activity</h2>
         {history.isError ? <button onClick={()=>void history.refetch()}>Retry loading activity</button> : history.isLoading ? <p>Loading activity…</p> : events.length ? <>
-          <ul>{(showAll?events:events.slice(0,6)).map(event=><li key={event._id}><span className={'safety-dot level-'+event.level} aria-hidden="true"/>
-            <span>{activity(event)}{event.level>=2 ? <small>{event.active?'Open incident':'Resolved incident'}{channelLabel[event.channel] ? ' · ' + channelLabel[event.channel] : ''}</small> : event.level === 1 ? <small>Check-in</small> : null}</span><time dateTime={event.createdAt}>{date(event.createdAt)}</time></li>)}</ul>
+          <ul>{(showAll?events:events.slice(0,6)).map(event=><li key={event._id}><span className={'safety-dot '+dotClass(event)} aria-hidden="true"/>
+            <span>{activity(event)}{event.level>=2 ? <small>{event.active?'Open incident':'Resolved incident'}{channelLabel[event.channel] ? ' · ' + channelLabel[event.channel] : ''}</small> : event.level === 1 ? <small>{event.category === TRAVELLING ? 'Status update' : 'Check-in'}</small> : null}</span><time dateTime={event.createdAt}>{date(event.createdAt)}</time></li>)}</ul>
           {events.length>6 && <button onClick={()=>setShowAll(!showAll)}>{showAll?'Show less':`Show all ${events.length}`}</button>}
         </> : <p>Your reports and check-ins will appear here.</p>}
       </section>

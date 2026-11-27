@@ -2,34 +2,43 @@ import { createHttpError, defineRoutes } from '@tilcayo/core';
 import { z } from 'zod';
 import { auth } from '../auth.js';
 import { individual } from '../individual/account.js';
-import { names, onCircleEvent, recipients } from '../circle/members.js';
+import { circleRecipients, names, onCircleEvent, recipients } from '../circle/members.js';
 import { alertEmergencyContacts, claimContactAlerts } from '../circle/contacts.js';
 import { defaultPreferences, deliveries, ensureNotificationIndexes, notifications, notify, preferences } from './engine.js';
 import mongoose from 'mongoose';
-import { onIncidentCreated } from '../individual/status.js';
+import { onIncidentCreated, type StatusEvent } from '../individual/status.js';
 
 const levelNames = ['Unknown', 'Confirmed safe', 'Assistance needed', 'Safety concern', 'Serious danger', 'Critical danger'];
 const channelNames:Record<string, string> = {account:'In-app report', gateway:'Reporting link', welfare:'Missed check-in', image:'Report photo', public:'Public report'};
-// Every new incident alerts the platform administrators; serious ones are urgent.
+// What every danger alert says: level, time, the person's note and (where allowed) a map link.
+const when = (date:Date) => new Intl.DateTimeFormat('en-GB', {dateStyle:'medium', timeStyle:'short', timeZone:'UTC'}).format(date) + ' UTC';
+const mapLink = (event:StatusEvent) => event.location ? `https://maps.google.com/?q=${event.location.latitude.toFixed(5)},${event.location.longitude.toFixed(5)}` : undefined;
+function details(event:StatusEvent, withLocation:boolean, noteLength:number) {
+  const map = withLocation ? mapLink(event) : undefined;
+  return {level:levelNames[event.level] ?? 'needs help', time:when(event.createdAt), ...(event.note ? {note:event.note.slice(0, noteLength)} : {}),
+    ...(map ? {map, mapSource:event.location!.source === 'report' ? 'at the time of the report' : 'last shared location'} : {})};
+}
+// Every new incident alerts the platform administrators by email and SMS, at every level, always with the location:
+// they may need to involve the authorities.
 onIncidentCreated(async event => {
   const admins = await mongoose.connection.collection('users').find({roles:'superadmin', deletedAt:null}, {projection:{_id:1}}).toArray();
+  const name = (await names([event.owner])).get(event.owner) ?? 'Someone';
   await Promise.all(admins.map(admin => notify(String(admin._id), 'incident-new', {
-    level:levelNames[event.level] ?? 'Report', channel:channelNames[event.channel] ?? 'Report', category:event.category,
-    ...(event.note ? {note:event.note.slice(0, 160)} : {}), urgent:event.level >= 4 ? 'yes' : 'no',
+    name, channel:channelNames[event.channel] ?? 'Report', category:event.category, ...details(event, true, 160),
   }, 'incident-new:' + event._id)));
 });
-// When someone reports danger in the app, their circle (members with status access) is alerted too.
-// Discreet one-tap link reports stay hidden from the circle; report photos alert it separately.
-// Emergency contacts (who may not use Sariel) are told about in-app reports and report photos.
+// Emergency contacts (who may not use Sariel) are told about in-app, discreet-link and report-photo incidents.
 onIncidentCreated(async event => {
-  if (event.channel !== 'account' && event.channel !== 'image') return;
+  if (event.channel === 'welfare') return;
   await alertEmergencyContacts(event.owner, {level:levelNames[event.level] ?? 'needs help', ...(event.note ? {note:event.note.slice(0, 200)} : {})}, event._id);
 });
+// The circle (members with status access) hears about in-app and discreet-link reports. The location is
+// included only for members the person allowed to see it. Report photos alert the circle separately.
 onIncidentCreated(async event => {
-  if (event.channel !== 'account') return;
+  if (event.channel !== 'account' && event.channel !== 'gateway') return;
   const name = (await names([event.owner])).get(event.owner) ?? 'Someone';
-  await Promise.all((await recipients(event.owner, 'status')).map(member => notify(member, 'circle-incident', {
-    name, level:levelNames[event.level] ?? 'needs help', ...(event.note ? {note:event.note.slice(0, 200)} : {}),
+  await Promise.all((await circleRecipients(event.owner, 'status')).map(member => notify(member.member, 'circle-incident', {
+    name, ...details(event, member.permissions.location, 200),
   }, 'circle-incident:' + event._id)));
 });
 

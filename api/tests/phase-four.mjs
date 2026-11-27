@@ -56,7 +56,7 @@ try {
   assert.equal((await circle(alice)).members.find(m=>m.id===invited.id).name,'Bob');
   assert.equal((await circle(bob)).circles[0].owner,alice.id);
 
-  // Members see status; outsiders see nothing; discreet link reports stay hidden.
+  // Members see status (discreet link reports included); outsiders see nothing.
   await post('individual/status',{requestId:randomUUID(),level:3},{token:alice.token});
   let view=await call('individual/circle/people/'+alice.id,{token:bob.token});
   assert.equal(view.status.level,3);
@@ -65,7 +65,7 @@ try {
   await post('individual/incident-link',{alias:'alice9',level:5,category:'welfare'},{token:alice.token,status:201});
   await post('auth/safety/activate',{token:'alice9'},{status:204});
   assert.equal((await call('individual/status',{token:alice.token})).level,5);
-  assert.equal((await call('individual/circle/people/'+alice.id,{token:bob.token})).status.level,3);
+  assert.equal((await call('individual/circle/people/'+alice.id,{token:bob.token})).status.level,5);
 
   // Permissions can be narrowed by the owner only.
   await call('individual/circle/'+invited.id,{method:'PATCH',body:{permissions:{...statusOnly,status:false}},token:bob.token,status:404});
@@ -207,6 +207,66 @@ try {
   assert.equal((await latest(eve,'circle-invite')).deliveries[0].state,'skipped');
   provider.close();
   console.log('Phase 4 notification checks passed.');
+
+  // ── Status defaults, Travelling and danger alerts ────────
+  const users=mongoose.connection.collection('users');
+  const individuals=mongoose.connection.collection('sariel_individuals');
+  const deliveryRows=mongoose.connection.collection('sariel_notification_deliveries');
+  const tom=await person('Tom'), sam=await person('Sam'), kim=await person('Kim'), lee=await person('Lee');
+  await users.updateOne({_id:new mongoose.Types.ObjectId(sam.id)},{$addToSet:{roles:'superadmin'}});
+  for (const [who,phone] of [[sam,'+254700000001'],[kim,'+254700000002'],[lee,'+254700000003']])
+    await individuals.updateOne({_id:who.id},{$set:{phone}},{upsert:true});
+  // New people are Confirmed safe, not Unknown.
+  let mine=await call('individual/status',{token:tom.token});
+  assert.deepEqual([mine.level,mine.status,mine.reportedAt],[1,'CONFIRMED_SAFE',null]);
+  // Travelling is a status update, never an incident.
+  await post('individual/status',{requestId:randomUUID(),level:1,category:'travelling'},{token:tom.token});
+  mine=await call('individual/status',{token:tom.token});
+  assert.deepEqual([mine.level,mine.status],[1,'TRAVELLING']);
+  assert.equal((await call('individual/status/history',{token:tom.token}))[0].category,'travelling');
+  assert.equal(await mongoose.connection.collection('sariel_safety_events').countDocuments({owner:tom.id,active:true}),0);
+  // Kim sees Tom's status and location; Lee sees only the status.
+  for (const [who,permissions] of [[kim,all],[lee,statusOnly]]) {
+    const entry=await post('individual/circle',{email:who.email,permissions},{token:tom.token,status:201});
+    await post('individual/circle/'+entry.id+'/accept',undefined,{token:who.token,status:204});
+  }
+  assert.equal((await call('individual/circle/people/'+tom.id,{token:kim.token})).status.status,'TRAVELLING');
+  // A danger report sent with a location: everyone is alerted by email and SMS with level, time and note;
+  // only members allowed to see the location (and superadmins) get the map link.
+  await post('individual/status',{requestId:randomUUID(),level:2,category:'welfare',note:'Stuck at the border',
+    location:{latitude:-1.28333,longitude:36.81667,accuracy:20}},{token:tom.token});
+  const channels=n=>n.deliveries.map(d=>d.channel).sort();
+  const queuedText=async n=>(await deliveryRows.findOne({notification:n.id})).text;
+  const admin=await latest(sam,'incident-new'), kimAlert=await latest(kim,'circle-incident'), leeAlert=await latest(lee,'circle-incident');
+  for (const alert of [admin,kimAlert,leeAlert]) {
+    assert.equal(alert.priority,'emergency');
+    assert.deepEqual(channels(alert),['email','sms']);
+    assert.match(await queuedText(alert),/Tom reported Assistance needed at .+ UTC\. Note: “Stuck at the border”/);
+  }
+  assert.match(await queuedText(admin),/maps\.google\.com\/\?q=-1\.28333,36\.81667/);
+  assert.match(kimAlert.body,/maps\.google\.com/);
+  assert.doesNotMatch(leeAlert.body+await queuedText(leeAlert),/maps\.google/);
+  const saved=await mongoose.connection.collection('sariel_safety_events').findOne({owner:tom.id,active:true});
+  assert.equal(saved.location.source,'report');
+  // Superadmins see the location in the incident register.
+  const register=await call('platform/incidents',{token:(await post('auth/login',{email:sam.email,password})).tokens.accessToken});
+  assert.equal(register.items.find(i=>i.reference===saved._id).location.latitude,-1.28333);
+  // Without a location in the report, the last shared point is used. Discreet link reports alert the circle too.
+  await call('individual/location/settings',{method:'PUT',body:{sharing:true},token:tom.token});
+  await post('individual/location',{points:[spot(1,-4.05)]},{token:tom.token});
+  await post('individual/incident-link',{alias:'tom7',level:4,category:'welfare'},{token:tom.token,status:201});
+  await post('auth/safety/activate',{token:'tom7'},{status:204});
+  const discreet=await mongoose.connection.collection('sariel_safety_events').findOne({owner:tom.id,channel:'gateway'});
+  assert.deepEqual([discreet.location.source,discreet.location.latitude],['last-known',-4.05]);
+  const kimDiscreet=(await inbox(kim)).filter(n=>n.kind==='circle-incident');
+  assert.equal(kimDiscreet.length,2);
+  assert.match(kimDiscreet[0].title,/Tom reported: Serious danger/);
+  assert.match(kimDiscreet[0].body,/last shared location/);
+  assert.equal((await inbox(sam)).filter(n=>n.kind==='incident-new').length,2);
+  // After an incident is resolved, the person is Confirmed safe again (not Unknown).
+  await mongoose.connection.collection('sariel_safety_events').updateMany({owner:tom.id},{$set:{active:false}});
+  assert.equal((await call('individual/status',{token:tom.token})).status,'CONFIRMED_SAFE');
+  console.log('Phase 4 status and danger alert checks passed.');
 
   // ── Welfare monitoring ───────────────────────────────────
   const {welfareCycle}=await import('../dist/welfare/welfare.js');

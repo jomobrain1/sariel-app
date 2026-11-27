@@ -54,6 +54,13 @@ export default async function sariel(req, res) {
   // Every *.vercel.app address (renamed projects, aliases, previews) is the main site: workspaces need a custom domain.
   const requestHost = host(req.headers.host);
   if (process.env.VERCEL && domain && requestHost?.endsWith('.vercel.app')) req.headers.host = domain;
-  if (req.url?.split('?')[0] === '/api/cron/jobs') return cron(req, res);
+  // The vercel.json rewrite (/api/:path*) appends its unused `path` parameter to the query string.
+  // Strict validators (like the admin users list) reject unknown parameters, so remove it again.
+  const url = new URL(req.url ?? '/', 'http://local');
+  if (url.searchParams.get('path') === url.pathname.replace(/^\/api\//, '')) {
+    url.searchParams.delete('path');
+    req.url = url.pathname + url.search;
+  }
+  if (url.pathname === '/api/cron/jobs') return cron(req, res);
   return handler(req, res);
 }

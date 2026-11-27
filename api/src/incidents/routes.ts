@@ -141,7 +141,7 @@ export default defineRoutes(router=>{
           orgId:{$convert:{input:'$incident.tenant',to:'objectId',onError:null,onNull:null}}}},
         {$lookup:{from:'users',localField:'accountId',foreignField:'_id',pipeline:[{$project:{name:1,email:1}}],as:'account'}},
         {$lookup:{from:Tenant.raw.collection.name,localField:'orgId',foreignField:'_id',pipeline:[{$project:{name:1}}],as:'org'}},
-        {$project:{_id:0,reference:'$_id',level:1,category:1,note:1,createdAt:1,channel:1,
+        {$project:{_id:0,reference:'$_id',level:1,category:1,note:1,createdAt:1,channel:1,location:1,
           version:'$incident.version',signals:{$map:{input:{$filter:{input:{$ifNull:['$incident.audit',[]]},as:'e',
             cond:{$in:['$$e.action',['gallery-road','gallery-bridge','gallery-mountain','photo-link-spread','acknowledge','dispatch','contact','note','refer','resolve']]}}},
             as:'e',in:{action:'$$e.action',at:'$$e.at',actorName:'$$e.actorName',note:'$$e.note'}}},
