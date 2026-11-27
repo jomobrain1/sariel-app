@@ -14,7 +14,7 @@ Because everything is on one domain:
 ## 1. Create the project
 
 1. In Vercel, choose **Add New → Project** and import `jomobrain1/sariel-app`.
-2. Set **Root Directory** to `client`. Keep **Include files outside the root directory** turned on (the default), because the function imports `../api`.
+2. Set **Root Directory** to `client` or `api`. Both work: `client/vercel.json` and `api/vercel.json` build the same site and API (with `api`, the built client is copied to `api/public`). Keep **Include files outside the root directory** turned on (the default).
 3. Leave the framework, build and install settings alone. They come from [`client/vercel.json`](../client/vercel.json):
    - install: `npm ci` at the repo root
    - build: `npm run build`, which builds the API and the client
