@@ -8,10 +8,13 @@ process.env.SARIEL_WORKERS = 'off';
 
 // Tenancy treats a request as the main site only when its host equals TENANCY_BASE_DOMAIN exactly.
 // Accept values pasted as URLs ("https://x.vercel.app/") and fall back to the project's production domain.
+// Local values copied from api/.env (localhost) never match on Vercel, so they are ignored there.
+const local = value => !value || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(value);
 const host = value => value?.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/[/:].*$/, '') || undefined;
-const domain = host(process.env.TENANCY_BASE_DOMAIN) ?? host(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+const configured = host(process.env.TENANCY_BASE_DOMAIN);
+const domain = process.env.VERCEL && local(configured) ? host(process.env.VERCEL_PROJECT_PRODUCTION_URL) ?? configured : configured;
 if (domain) process.env.TENANCY_BASE_DOMAIN = domain;
-if (!process.env.APP_URL && domain) process.env.APP_URL = `https://${domain}`;
+if (domain && (!process.env.APP_URL || local(host(process.env.APP_URL)))) process.env.APP_URL = `https://${domain}`;
 
 const { config } = await import('../../api/dist/config.js');
 const { default: app } = await import('../../api/dist/app.js');
