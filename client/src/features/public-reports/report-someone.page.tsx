@@ -10,6 +10,9 @@ const countries: [string, string][] = [['KE', 'Kenya'], ['UG', 'Uganda'], ['TZ',
 const megabytes = (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`;
 
 /** Public page: anyone can report someone else in danger, optionally with photos or videos. */
+// A file that the storage service refused (or that never reached it).
+class UploadError extends Error { file: string; constructor(file: string) { super('upload'); this.file = file; } }
+
 export function ReportSomeonePage() {
   const config = publicReportsApi.usePublicReportConfigQuery();
   const [create] = publicReportsApi.useCreatePublicReportMutation();
@@ -53,8 +56,8 @@ export function ReportSomeonePage() {
         const body = new FormData();
         Object.entries(auth.fields).forEach(([key, value]) => body.append(key, String(value)));
         body.append('file', file);
-        const response = await fetch(auth.uploadUrl, { method: 'POST', body });
-        if (!response.ok) throw new Error('upload');
+        const response = await fetch(auth.uploadUrl, { method: 'POST', body }).catch(() => null);
+        if (!response?.ok) throw new UploadError(file.name);
         await complete({ id, token, publicId: auth.publicId, filename: file.name, bytes: file.size }).unwrap();
       }
       setProgress('Finishing…');
@@ -62,6 +65,8 @@ export function ReportSomeonePage() {
       setDone(true);
     } catch (failure) {
       const status = apiStatus(failure);
+      if (failure instanceof UploadError) { setError(`Couldn’t upload ${failure.file}. Your report was not sent. Try again, or remove the file and send without it.`); return; }
+      if (status === 503) { setError('Photo and video uploads are not available right now. Remove the files and send your report without them.'); return; }
       setError(status === 429 ? 'Too many reports from this connection. Please wait a few minutes.' : status === 422 ? 'Please check the details and try again.'
         : 'Something went wrong while sending. Check your connection and try again.');
     } finally { setProgress(''); }

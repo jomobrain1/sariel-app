@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { defineRoutes } from '@tilcayo/core';
+import { createHttpError, defineRoutes } from '@tilcayo/core';
 import { z } from 'zod';
 import { auth } from '../auth.js';
 import { Config, id, platform, platformOnly, profile, requireTenant, save } from '../administration/config.js';
@@ -14,6 +14,24 @@ async function actorNames(records: {actorId?: unknown}[]) {
 
 export default defineRoutes(router => {
   router.group({prefix:'/api/sariel/admin', middleware:[...auth.requestMiddleware, auth.middleware, platformOnly]}, () => {
+    // Grant or revoke platform superadmin. Tilcayo only grants it through the setup script.
+    router.put('/users/:id/superadmin', async ctx => {
+      const target = String(ctx.params.id);
+      if (target === auth.user(ctx).id) throw createHttpError(400, 'SELF_CHANGE', 'You can’t change your own superadmin access.');
+      const users = mongoose.connection.collection('users');
+      const _id = new mongoose.Types.ObjectId(target);
+      const account = await users.findOne({_id, deletedAt: null}, {projection: {roles: 1}});
+      if (!account) throw createHttpError(404, 'NOT_FOUND', 'User not found');
+      const { superadmin } = ctx.body as { superadmin: boolean };
+      if (superadmin) await users.updateOne({_id}, {$addToSet: {roles: 'superadmin'}});
+      else {
+        if (account.roles?.includes('superadmin') && await users.countDocuments({roles: 'superadmin', deletedAt: null}) <= 1)
+          throw createHttpError(409, 'LAST_SUPERADMIN', 'Keep at least one superadmin.');
+        // Signing them out ends any platform session that was opened with the old access.
+        await users.updateOne({_id}, {$pull: {roles: 'superadmin'}, $inc: {sessionVersion: 1}} as never);
+      }
+      return ctx.response.success({id: target, superadmin});
+    }, {validate: {params: z.strictObject({id}), body: z.strictObject({superadmin: z.boolean()})}});
     router.get('/audit', async ctx => {
       const entries = await mongoose.connection.collection('tilcayo_tenant_audit').find({}).sort({createdAt:-1}).limit(100).toArray();
       const changes = await Config.aggregate([{$unwind:'$history'}, {$sort:{'history.at':-1}}, {$limit:100},

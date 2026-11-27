@@ -17,7 +17,7 @@ export type CircleOverview = {
 };
 export type PersonView = {
   owner: string; name: string; permissions: Permissions;
-  status: { level: number; reportedAt: string | null } | null;
+  status: { level: number; status?: string; reportedAt: string | null } | null;
   lastCheckInRequest: { createdAt: string; answeredAt: string | null } | null;
 };
 

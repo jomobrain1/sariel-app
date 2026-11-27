@@ -47,6 +47,12 @@ export async function recipients(owner:string, permission:keyof Permissions) {
   return rows.map(r => r.member!).filter(Boolean);
 }
 
+/** Active members holding `permission`, with all their permissions (e.g. to decide whether to include a location). */
+export async function circleRecipients(owner:string, permission:keyof Permissions) {
+  const rows = await members().find({owner, state:'active', ['permissions.'+permission]:true}, {projection:{member:1, permissions:1}}).toArray();
+  return rows.filter(r => r.member).map(r => ({member:r.member!, permissions:r.permissions}));
+}
+
 export async function closeCheckInRequests(owner:string) {
   await checkIns().updateMany({owner, answeredAt:null}, {$set:{answeredAt:new Date()}});
 }
@@ -172,7 +178,7 @@ export default defineRoutes(router => {
       return ctx.response.success({
         owner, name, permissions,
         // Discreet link and gallery reports never reach circle members.
-        status:permissions.status ? await currentStatus(owner, ['account', 'welfare', 'image']) : null,
+        status:permissions.status ? await currentStatus(owner) : null,
         lastCheckInRequest:request ? {createdAt:request.createdAt, answeredAt:request.answeredAt} : null,
       });
     }, {validate:{params:personParams}});

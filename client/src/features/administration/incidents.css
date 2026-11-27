@@ -57,3 +57,13 @@
 .incident-resolve{min-height:40px;padding:0 16px;border:1px solid #0f4d3f;border-radius:8px;background:#fff;color:#0f4d3f;font:inherit;font-weight:700;cursor:pointer}
 .incident-resolve:hover:not(:disabled){background:#0f4d3f;color:#fff}
 .incident-resolve:disabled{opacity:.55;cursor:not-allowed}
+
+/* Progress on response actions */
+.incident-spinner{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:incident-spin .7s linear infinite;flex:none}
+.incident-resolve{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.incident-primary:disabled,.incident-secondary:disabled{opacity:.6;cursor:not-allowed}
+.incident-primary[aria-busy=true],.incident-secondary[aria-busy=true],.incident-resolve[aria-busy=true]{opacity:1;cursor:progress}
+.incident-saved{margin:10px 0 0;padding:8px 12px;border-radius:6px;background:#e6f2ec;color:#0f4d3f;font-weight:600}
+@keyframes incident-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.incident-spinner{animation-duration:2s}}
+.incident-location{display:grid;gap:2px}.incident-location a{color:#0f4d3f;font-weight:700}.incident-location small{color:#5d6b66}

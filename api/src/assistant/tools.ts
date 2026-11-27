@@ -27,7 +27,7 @@ export const tools = {
     description:'Get the person’s current safety status and when it was last reported.',
     run:async ctx => {
       const status = await currentStatus(ctx.userId);
-      return {level:status.level, status:levelLabels[status.level], reportedAt:status.reportedAt};
+      return {level:status.level, status:status.status === 'TRAVELLING' ? 'Travelling' : levelLabels[status.level], reportedAt:status.reportedAt};
     }}),
 
   get_my_circle:tool({kind:'read', schema:none,

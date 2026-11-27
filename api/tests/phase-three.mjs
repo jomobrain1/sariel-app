@@ -87,7 +87,8 @@ try {
   const credential={selector:identity.selector,secret:identity.codes[4].secret};
   await post('auth/safety/validate',{selector:old.selector,secret:old.codes[4].secret},{status:403});
   assert.equal((await post('auth/safety/validate',credential)).level,4);
-  assert.equal((await call('individual/status',{token})).level,0);
+  // Nobody starts as Unknown: without reports a person is Confirmed safe.
+  assert.equal((await call('individual/status',{token})).level,1);
   const report={...credential,requestId:randomUUID(),category:'welfare',country:'KE'};
   const [one,two]=await Promise.all([post('auth/safety/report',report),post('auth/safety/report',report)]);
   assert.equal(one.reference,two.reference);
@@ -208,6 +209,17 @@ try {
   await put('sariel/admin/organization/'+org.id+'/access',{incidentAccess:false},{token:admin});
   await call('incidents/',{...firstStaff,status:403});
   assert.equal((await call('incidents/access',firstStaff)).allowed,false);
+  // Superadmins can grant and revoke superadmin, never on themselves, and the last one stays.
+  const citizenId=(await call('auth/me',{token})).id, adminId=(await call('auth/me',{token:admin})).id;
+  await put('sariel/admin/users/'+citizenId+'/superadmin',{superadmin:true},{token,status:403});
+  await put('sariel/admin/users/'+adminId+'/superadmin',{superadmin:false},{token:admin,status:400});
+  await put('sariel/admin/users/'+citizenId+'/superadmin',{superadmin:true},{token:admin});
+  const promoted=await login(citizen);
+  assert.equal((await call('auth/me',{token:promoted})).platformRole,'superadmin');
+  await call('platform/incidents',{token:promoted});
+  await put('sariel/admin/users/'+citizenId+'/superadmin',{superadmin:false},{token:admin});
+  await call('platform/incidents',{token:promoted,status:401});
+  await call('platform/incidents',{token:await login(citizen),status:403});
   console.log('Phase 3 HTTP integration checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));

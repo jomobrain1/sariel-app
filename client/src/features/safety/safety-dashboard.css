@@ -117,3 +117,10 @@
   .safety-history li {grid-template-columns:auto minmax(0,1fr)}
   .safety-history time {grid-column:2}
 }
+
+/* Travelling: not danger, shown in blue */
+.safety-current.level-travelling {background:linear-gradient(145deg,#1d5b8f,#16466f)}
+.safety-dot.level-travelling {background:#1d5b8f}
+.safety-current-actions {display:flex;flex-wrap:wrap;gap:10px}
+.safety-dashboard .safety-current .safety-travel {background:transparent;color:#fff;border-color:rgb(255 255 255 / 70%)}
+.safety-dashboard .safety-current .safety-travel:hover:not(:disabled) {background:rgb(255 255 255 / 12%)}

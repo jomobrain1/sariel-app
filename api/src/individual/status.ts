@@ -8,16 +8,22 @@ import { country, label } from '../administration/config.js';
 import { individual } from './account.js';
 
 export const levels=['UNKNOWN','CONFIRMED_SAFE','ASSISTANCE_NEEDED','SAFETY_CONCERN','SERIOUS_DANGER','CRITICAL_DANGER'] as const;
+// "Travelling" is a level-1 (not danger) update with this category, so it never opens an incident.
+export const TRAVELLING='travelling';
+const coordinates=z.strictObject({latitude:z.number().min(-90).max(90),longitude:z.number().min(-180).max(180),accuracy:z.number().min(0).max(100_000)});
+export interface EventLocation { latitude:number; longitude:number; accuracy:number; recordedAt:Date; source:'report'|'last-known' }
 export const reportInput=z.strictObject({
   requestId:z.uuid(), category:label.default('welfare'), country:country.optional(),
 });
 const update=reportInput.extend({level:z.number().int().min(0).max(5),
   // Optional description of what is happening, shown to the administrators handling the incident.
-  note:z.string().trim().max(1000).optional()});
+  note:z.string().trim().max(1000).optional(),
+  // Where the person was when reporting danger (asked from the browser at that moment).
+  location:coordinates.optional()});
 export type Report=z.output<typeof update>;
 export interface StatusEvent {
   _id:string; owner:string; level:number; channel:'account'|'gateway'|'welfare'|'image'; createdAt:Date;
-  incident?:Incident; active:boolean; category:string; country?:string; note?:string; fingerprint:string;
+  incident?:Incident; active:boolean; category:string; country?:string; note?:string; fingerprint:string; location?:EventLocation;
 }
 export const events=()=>mongoose.connection.collection<StatusEvent>('sariel_safety_events');
 // Lets other features (platform notifications) react to new incidents without a circular import.
@@ -28,7 +34,12 @@ export async function recordStatus(owner:string,report:Report,channel:StatusEven
   const fingerprint=JSON.stringify([report.level,report.category,report.country??null,channel,...(report.note?[report.note]:[])]);
   const event:StatusEvent={_id:key,owner,level:report.level,category:report.category,country:report.country,
     active:report.level>=2,channel,createdAt:new Date(),fingerprint,...(report.note?{note:report.note}:{})};
-  if(event.active) event.incident=pendingIncident(event);
+  if(event.active){
+    event.incident=pendingIncident(event);
+    // Danger reports carry a location for responders: the one sent with the report, else the last shared point.
+    const location=report.location ? {...report.location,recordedAt:event.createdAt,source:'report' as const} : await lastLocation(owner);
+    if(location) event.location=location;
+  }
   let created=false;
   try { await events().insertOne(event); created=true; }
   catch(error){
@@ -49,14 +60,21 @@ export async function recordStatus(owner:string,report:Report,channel:StatusEven
   }
   return {reference:key,level:report.level,status:levels[report.level]};
 }
-// An unresolved report outranks every routine update, including UNKNOWN.
-// Pass channels to limit which reports count, e.g. to keep discreet link reports out of circle views.
+async function lastLocation(owner:string):Promise<EventLocation|undefined>{
+  const point=await mongoose.connection.collection('sariel_locations').find({owner}).sort({recordedAt:-1}).limit(1).next();
+  return point ? {latitude:point.latitude,longitude:point.longitude,accuracy:point.accuracy,recordedAt:point.recordedAt,source:'last-known'} : undefined;
+}
+// An unresolved report outranks every routine update. Without one, people are Confirmed safe
+// (also when they've never reported, or after an incident is resolved) until they say otherwise.
+// Only an explicit UNKNOWN (a missed scheduled check-in) shows Unknown.
+// Pass channels to limit which reports count.
 export async function currentStatus(owner:string,channels?:StatusEvent['channel'][]){
   const filter={owner,...(channels?{channel:{$in:channels}}:{})};
   const highest=await events().find({...filter,active:true}).sort({level:-1,createdAt:-1,_id:-1}).limit(1).next();
   const latest=highest??await events().find(filter).sort({createdAt:-1,_id:-1}).limit(1).next();
-  const level=latest && (latest.active || latest.level<2)?latest.level:0;
-  return {level,status:levels[level],reportedAt:latest?.createdAt??null};
+  const level=!latest ? 1 : latest.active || latest.level<2 ? latest.level : 1;
+  const travelling=level===1 && latest?.level===1 && latest.category===TRAVELLING;
+  return {level,status:travelling?'TRAVELLING':levels[level],reportedAt:latest?.createdAt??null};
 }
 // Lets other features (welfare check-ins) react when someone confirms they're safe from the dashboard.
 const safeListeners:((owner:string)=>Promise<void>)[]=[];

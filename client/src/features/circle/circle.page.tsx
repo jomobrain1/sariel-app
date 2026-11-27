@@ -5,7 +5,7 @@ import { useAuth } from '../../app/auth';
 import { inviteError } from '../../lib/api-status';
 import { AccountIcon } from '../../components/account-icon';
 import { Toggle } from '../../components/toggle';
-import { labels } from '../safety/safety.api';
+import { statusClass, statusLabel } from '../safety/safety.api';
 import { circleApi, permissionLabels, relationships, type CircleMember, type CircleOverview, type Permissions, type Relationship } from './circle.api';
 import { EmergencyContacts } from '../onboarding/contacts-card';
 import './circle.css';
@@ -228,8 +228,8 @@ function PersonDetail({ owner, entry, close }: { owner: string; entry: string; c
   if (!data) return <p role="status">Loading…</p>;
   const request = data.lastCheckInRequest;
   return <div className="circle-person">
-    {data.status && <section className={'circle-status level-' + data.status.level}>
-      <span>Safety status</span><strong>{labels[data.status.level]}</strong>
+    {data.status && <section className={'circle-status ' + statusClass(data.status)}>
+      <span>Safety status</span><strong>{statusLabel(data.status)}</strong>
       {data.status.reportedAt && <small>Updated {date(data.status.reportedAt)}</small>}
     </section>}
     {data.permissions.location && <PersonLocation owner={owner} />}

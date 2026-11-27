@@ -7,6 +7,7 @@ export interface PlatformIncident {
   reference:string; category:string; note?:string; level:number; createdAt:string; channel:'account'|'gateway'|'welfare'|'image';
   state:'pending'|'assigned'|'acknowledged'|'resolved'; organization:string|null;
   account:{name:string;email:string}|null;
+  location?:{latitude:number;longitude:number;accuracy:number;recordedAt:string;source:'report'|'last-known'};
 }
 export const configApi = tilcayoApi.injectEndpoints({endpoints: b => ({
   configuration:b.query<{data:RecordData|null},string>({query:path => '/sariel/'+path}),

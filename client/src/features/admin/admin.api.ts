@@ -15,6 +15,7 @@ export const adminApi = tilcayoApi.enhanceEndpoints({ addTagTypes: ['AdminUsers'
     }),
     createAdminUser: builder.mutation<unknown, { name: string; email: string; password: string; roles: string[] }>({ query: body => ({ url: '/admin/users', method: 'POST', body }), invalidatesTags: ['AdminUsers'] }),
     setAdminUserStatus: builder.mutation<unknown, { id: string; suspended: boolean }>({ query: ({ id, suspended }) => ({ url: '/admin/users/' + encodeURIComponent(id) + '/status', method: 'PUT', body: { suspended } }), invalidatesTags: ['AdminUsers'] }),
+    setSuperadmin: builder.mutation<unknown, { id: string; superadmin: boolean }>({ query: ({ id, superadmin }) => ({ url: '/sariel/admin/users/' + encodeURIComponent(id) + '/superadmin', method: 'PUT', body: { superadmin } }), invalidatesTags: ['AdminUsers'] }),
     deleteAdminUser: builder.mutation<unknown, string>({ query: id => ({ url: '/admin/users/' + encodeURIComponent(id), method: 'DELETE' }), invalidatesTags: ['AdminUsers'] }),
     restoreAdminUser: builder.mutation<unknown, string>({ query: id => ({ url: '/admin/users/' + encodeURIComponent(id) + '/restore', method: 'POST', body: {} }), invalidatesTags: ['AdminUsers'] }),
     getAdminUsers: builder.query<TilcayoResponse<AdminUsersResponse>, UsersQuery>({
@@ -22,4 +23,4 @@ export const adminApi = tilcayoApi.enhanceEndpoints({ addTagTypes: ['AdminUsers'
     }),
   }),
 });
-export const { useCreateAdminUserMutation, useSetAdminUserStatusMutation, useGetAdminUsersQuery, useGetAdminRolesQuery, useSaveAdminRoleMutation, useAssignAdminRolesMutation, useDeleteAdminUserMutation, useRestoreAdminUserMutation } = adminApi;
+export const { useCreateAdminUserMutation, useSetAdminUserStatusMutation, useGetAdminUsersQuery, useGetAdminRolesQuery, useSaveAdminRoleMutation, useAssignAdminRolesMutation, useDeleteAdminUserMutation, useRestoreAdminUserMutation, useSetSuperadminMutation } = adminApi;
