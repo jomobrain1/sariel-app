@@ -62,7 +62,8 @@ export const gemini: ChatProvider & EmbeddingProvider & ImageProvider = {
     const body = await call(config, `models/${encodeURIComponent(config.model)}:generateContent`, {
       systemInstruction:{parts:[{text:request.system}]},
       contents:toContents(request.messages, config.model),
-      ...(request.tools?.length ? {tools:[{functionDeclarations:request.tools.map(t => ({name:t.name, description:t.description, parameters:schema(t.parameters)}))}]} : {}),
+      ...(request.tools?.length ? {tools:[{functionDeclarations:request.tools.map(t => ({name:t.name, description:t.description,
+        ...(Object.keys((t.parameters as {properties?:object}).properties ?? {}).length ? {parameters:schema(t.parameters)} : {})}))}]} : {}),
       generationConfig:{maxOutputTokens:request.maxTokens ?? 8192},
     });
     const feedback = body.promptFeedback as {blockReason?:string} | undefined;

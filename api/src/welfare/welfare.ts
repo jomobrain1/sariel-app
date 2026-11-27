@@ -124,7 +124,7 @@ const settingsBody = z.strictObject({
   escalateAfterHours:z.number().int().refine(n => (ESCALATION as readonly number[]).includes(n)).nullable(),
 });
 
-async function overview(owner:string) {
+export async function overview(owner:string) {
   const [row, events] = await Promise.all([
     welfare().findOne({_id:owner}),
     history().find({owner}).sort({at:-1}).limit(30).toArray(),
