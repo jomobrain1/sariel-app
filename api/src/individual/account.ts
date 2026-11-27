@@ -3,6 +3,8 @@ import { createHmac, randomInt } from 'node:crypto';
 import { createHttpError, defineRoutes, rateLimit, type Middleware } from '@tilcayo/core';
 import { z } from 'zod';
 import { auth } from '../auth.js';
+import { sendSms, smsConfigured } from '../notifications/sms.js';
+import { sendEmail, smtpConfigured } from '../notifications/email.js';
 
 const personalHost: Middleware = (ctx, next) => {
   if (auth.user(ctx).tenant) throw createHttpError(403, 'FORBIDDEN', 'Use your individual account on the main domain.');
@@ -48,15 +50,20 @@ export default defineRoutes(router => {
       const target=body.channel==='email'?user.email:body.phone!;
       const endpoint=process.env.VERIFICATION_DELIVERY_URL;
       const key=process.env.VERIFICATION_DELIVERY_TOKEN;
-      if(!endpoint?.startsWith('https://') || !key) throw createHttpError(503,'DELIVERY_UNAVAILABLE','Verification delivery is unavailable.');
+      // Without a delivery webhook, codes go out directly: SMS via Mobile Sasa, email via SMTP.
+      const direct=body.channel==='phone'?smsConfigured():smtpConfigured();
+      if((!endpoint?.startsWith('https://') || !key) && !direct) throw createHttpError(503,'DELIVERY_UNAVAILABLE','Verification delivery is unavailable.');
       const code=String(randomInt(1_000_000)).padStart(6,'0');
       const challenge={target,digest:digest(user.id,body.channel,target,code),expires:new Date(Date.now()+600_000)};
       const path='challenges.'+body.channel;
       await accounts().updateOne({_id:user.id},{$set:{[path]:challenge}},{upsert:true});
       try {
-        const result=await fetch(endpoint,{method:'POST', redirect:'error',signal:AbortSignal.timeout(8000),
-          headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({channel:body.channel,target,code})});
-        if(!result.ok) throw new Error();
+        if(endpoint?.startsWith('https://') && key){
+          const result=await fetch(endpoint,{method:'POST', redirect:'error',signal:AbortSignal.timeout(8000),
+            headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({channel:body.channel,target,code})});
+          if(!result.ok) throw new Error();
+        } else if(body.channel==='phone') await sendSms(target,`Your Sariel verification code is ${code}. It expires in 10 minutes.`);
+        else await sendEmail(target,'Your Sariel verification code',`Your Sariel verification code is ${code}. It expires in 10 minutes.`,'verify-'+user.id);
       } catch {
         await accounts().updateOne({_id:user.id,[path+'.digest']:challenge.digest},{$unset:{[path]:''}});
         throw createHttpError(503,'DELIVERY_UNAVAILABLE','Verification delivery failed.');
