@@ -9,7 +9,7 @@ import { events, recordStatus } from '../individual/status.js';
 import { country, label, platformOnly } from '../administration/config.js';
 import { names, recipients } from '../circle/members.js';
 import { notify } from '../notifications/engine.js';
-import { open, seal as sealSecret } from '../ai/secrets.js';
+import { open, seal as sealSecret, dataKeyFingerprint } from '../ai/secrets.js';
 import { coverPng } from '../images/covers.js';
 import { decode, encodePng, fromDataUrl, imageBody } from '../images/codec.js';
 import { embed, extract, seal, unseal } from './stego.js';
@@ -47,7 +47,7 @@ async function ownKey(owner:string) {
   if (existing) {
     // Fails when this server's SARIEL_DATA_KEY differs from the one that stored the key (e.g. local vs. Vercel on one database).
     try { return {selector:existing.selector, key:open(existing.key, 'report-key:' + owner)}; }
-    catch { throw createHttpError(503, 'KEY_UNAVAILABLE', 'Report photos can’t be created right now: this server can’t read your report key. An administrator needs to check SARIEL_DATA_KEY.'); }
+    catch { throw createHttpError(503, 'KEY_UNAVAILABLE', `Report photos can’t be created right now: this server can’t read your report key. An administrator needs to check SARIEL_DATA_KEY (server key ${dataKeyFingerprint()}).`); }
   }
   const selector = randomBytes(16).toString('hex'), key = randomBytes(32);
   try { await keys().insertOne({_id:owner, selector, key:sealSecret(key, 'report-key:' + owner), createdAt:new Date()}); }

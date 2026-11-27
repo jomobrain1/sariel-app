@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes } from 'node:crypto';
 
 // Server-side encryption for stored secrets (provider API keys, report keys).
 // SARIEL_DATA_KEY (32 bytes, hex or base64) is preferred. Without it, a key is derived from the
@@ -13,6 +13,11 @@ function dataKey(): Buffer {
   const secret = process.env.AUTH_ACCESS_SECRET;
   if (!secret) throw new Error('Set SARIEL_DATA_KEY or AUTH_ACCESS_SECRET to store secrets.');
   return Buffer.from(hkdfSync('sha256', secret, 'sariel', 'sariel-data-key-v1', 32));
+}
+
+/** A short one-way fingerprint of the data key, to compare environments without revealing it. */
+export function dataKeyFingerprint(): string {
+  try { return createHash('sha256').update(dataKey()).digest('hex').slice(0, 8); } catch { return 'invalid'; }
 }
 
 /** Encrypts with AES-256-GCM. Output: base64(iv | tag | ciphertext). */
