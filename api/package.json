@@ -21,16 +21,20 @@
     "tenancy:setup": "node --env-file-if-exists=.env dist/scripts/setup-tenancy.js"
   },
   "dependencies": {
-    "@tilcayo/core": "^0.0.3",
+    "@anthropic-ai/sdk": "^1.14.0",
     "@tilcayo/auth": "^0.0.4",
     "@tilcayo/cloudinary": "^0.0.3",
+    "@tilcayo/core": "^0.0.3",
+    "jpeg-js": "^0.4.4",
     "mongoose": "^9.10.2",
+    "pngjs": "^7.0.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@tilcayo/cli": "^0.0.4",
     "@types/node": "^26.6.3",
-    "typescript": "^7.0.2",
-    "nodemon": "^3.1.14"
+    "@types/pngjs": "^6.0.5",
+    "nodemon": "^3.1.14",
+    "typescript": "^7.0.2"
   }
 }

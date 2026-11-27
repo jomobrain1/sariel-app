@@ -11,7 +11,7 @@ const primary = [
   ['Users', 'users', 'user'],
 ] as const;
 const settings = [
-  ['Platform', 'platform-settings'], ['Audit log', 'audit'], ['Trash', 'recovery'], ['My profile', 'profile'],
+  ['Platform', 'platform-settings'], ['AI providers', 'ai-settings'], ['Audit log', 'audit'], ['Trash', 'recovery'], ['My profile', 'profile'],
 ] as const;
 
 export function PlatformLayout() {

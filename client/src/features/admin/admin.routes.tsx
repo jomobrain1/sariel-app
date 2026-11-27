@@ -1,4 +1,5 @@
 import { PlatformIncidents } from '../administration/incidents.page';
+import { AiSettingsPage } from '../administration/ai-settings.page';
 import { PlatformSettings, AuditPage } from '../administration/configuration';
 import { TrashPage } from './trash.page';
 import { Navigate, type RouteObject } from 'react-router';
@@ -23,6 +24,7 @@ export const adminRoutes: RouteObject[] = [{
     { path: 'settings', element: <SettingsPage /> },
     { path: 'platform-settings', element: <PlatformSettings /> },
     { path: 'incidents', element: <PlatformIncidents /> },
+    { path: 'ai-settings', element: <AiSettingsPage /> },
     { path: 'audit', element: <AuditPage /> },
     { path: 'recovery', element: <TrashPage /> },
     { path: 'workspaces', element: <TenantsPage /> },
