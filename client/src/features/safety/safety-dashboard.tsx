@@ -1,11 +1,13 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router';
+import { Link, Navigate } from 'react-router';
+import { onboardingApi } from '../onboarding/onboarding.api';
 import { Modal } from '@tilcayo/ui';
 import { useAuth } from '../../app/auth';
 import { AccountIcon } from '../../components/account-icon';
 import { Toggle } from '../../components/toggle';
 import { labels, safetyApi, type Update } from './safety.api';
 import './safety-dashboard.css';
+import '../onboarding/onboarding.css';
 import { useAppDispatch } from '../../app/hooks';
 import { WelfareCard } from '../welfare/welfare-card';
 import { welfareApi } from '../welfare/welfare.api';
@@ -73,6 +75,8 @@ function Tools() {
 export function SafetyDashboard({accountId}:{accountId:string}) {
   const { user } = useAuth();
   const firstName = user?.name.trim().split(/\s+/)[0] ?? '';
+  const onboarding = onboardingApi.useOnboardingQuery();
+  const [now] = useState(() => Date.now());
   const status = safetyApi.useSafetyStatusQuery(accountId,{refetchOnMountOrArgChange:true});
   const history = safetyApi.useSafetyHistoryQuery(accountId,{refetchOnMountOrArgChange:true});
   const [send] = safetyApi.useSubmitSafetyUpdateMutation();
@@ -118,7 +122,12 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
     if(level !== undefined) void submit({level,category:category.trim(),country:country.trim().toUpperCase() || undefined,note:note.trim() || undefined});
   }
 
+  const setupPending = onboarding.currentData && !onboarding.currentData.data.onboarded;
+  // New accounts go straight to the welcome steps; older ones just get a reminder.
+  const isNew = !!user?.createdAt && now - Date.parse(user.createdAt) < 2 * 24 * 60 * 60 * 1000;
+  if (setupPending && isNew) return <Navigate to="/welcome" replace />;
   return <section className="safety-dashboard">
+    {setupPending && <div className="setup-banner" role="status"><p><strong>Finish setting up.</strong> Add your details, circle and emergency contacts so help can reach you.</p><Link to="/welcome">Continue setup</Link></div>}
     <header className="safety-heading"><h1>{firstName ? `Hi ${firstName}` : 'Your safety'}</h1><p>Your safety at a glance. Report, check in, or reach your circle.</p></header>
     {message && <div className="safety-feedback" role="status">{message}{reference && <Toggle icon="tag" title="Report reference"><code>{reference}</code></Toggle>}</div>}
     <div className="safety-layout">

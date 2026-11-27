@@ -135,3 +135,5 @@
 .circle-location .circle-trail {margin:0 0 14px}
 .circle-location .circle-trail .circle-hint {margin:8px 0 0}
 .circle-trail li span {color:#5b6b66}
+.circle-contacts .contacts {margin-top:16px}
+.circle-grid + .circle-contacts,.circle-contacts {margin-top:24px}

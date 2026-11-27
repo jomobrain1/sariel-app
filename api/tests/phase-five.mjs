@@ -430,6 +430,47 @@ try {
   for(const k of ['MAIL_USER','MAIL_PASS','MAIL_HOST','MAIL_PORT','MAIL_SECURE'])delete process.env[k];
   smtp.close();
   console.log('Phase 5 email delivery checks passed.');
+
+  // ── Welcome steps and emergency contacts ─────────────────
+  let onboarding=await call('individual/onboarding',{token:alice.token});
+  assert.equal(onboarding.onboarded,false);
+  await put('individual/onboarding/details',{residence:'SA',nationality:'KE',preferredLanguage:'Kiswahili'},{token:alice.token,status:204});
+  onboarding=await call('individual/onboarding',{token:alice.token});
+  assert.deepEqual(onboarding.details,{residence:'SA',nationality:'KE',preferredLanguage:'Kiswahili'});
+  assert.equal((await call('individual/safety-profile',{token:alice.token})).information.nationality,'KE');
+  await post('individual/onboarding/complete',undefined,{token:alice.token,status:204});
+  assert.equal((await call('individual/onboarding',{token:alice.token})).onboarded,true);
+
+  await post('individual/emergency-contacts',{name:'Me'},{token:alice.token,status:422});
+  await post('individual/emergency-contacts',{name:'Me',email:alice.email},{token:alice.token,status:422});
+  await post('individual/emergency-contacts',{name:'Mum',phone:'0712'},{token:alice.token,status:422});
+  const carolContact=await post('individual/emergency-contacts',{name:'Carol',email:'carol@example.test',phone:'+254712345678',relationship:'family'},{token:alice.token,status:201});
+  await post('individual/emergency-contacts',{name:'Bob',email:bob.email,relationship:'friend'},{token:alice.token,status:201});
+  assert.equal((await call('individual/emergency-contacts',{token:alice.token})).length,2);
+  await call('individual/emergency-contacts/'+carolContact.id,{token:bob.token,method:'DELETE',status:404});
+
+  await mongoose.connection.collection('sariel_safety_events').updateMany({owner:alice.id},{$set:{active:false}});
+  await post('individual/status',{requestId:randomUUID(),level:5,category:'trafficking',note:'They locked the door'},{token:alice.token});
+  // Registered contact: in-app alert (urgent).
+  const bobContactAlert=(await call('individual/notifications',{token:bob.token})).items.find(n=>n.kind==='contact-alert');
+  assert.equal(bobContactAlert.title,'Alice may need help');assert.equal(bobContactAlert.priority,'emergency');
+  assert.match(bobContactAlert.body,/They reported: Critical danger\. They wrote: “They locked the door”/);
+  // Unregistered contact: discreet email and SMS queued.
+  const carolDeliveries=await mongoose.connection.collection('sariel_notification_deliveries').find({recipient:'contact:'+carolContact.id}).toArray();
+  assert.deepEqual(carolDeliveries.map(d=>d.channel).sort(),['email','sms']);
+  assert(carolDeliveries.every(d=>!/Alice|trafficking|door/.test(d.text)),'contact messages stay discreet');
+  // Carol joins later with the same email and sees what happened.
+  const carol=await person('Carol');
+  const carolInbox=(await call('individual/notifications',{token:carol.token})).items;
+  const claimed=carolInbox.find(n=>n.kind==='contact-alert');
+  assert.equal(claimed.title,'Alice may need help');assert.match(claimed.body,/They locked the door/);
+  assert.equal((await call('individual/notifications',{token:carol.token})).items.filter(n=>n.kind==='contact-alert').length,1);
+  // Link reports stay discreet for contacts too.
+  const carolCount=(await mongoose.connection.collection('sariel_contact_alerts').countDocuments({}));
+  await mongoose.connection.collection('sariel_safety_events').updateMany({owner:alice.id},{$set:{active:false}});
+  await post('auth/safety/activate',{token:'alicemail7'},{status:204});
+  assert.equal(await mongoose.connection.collection('sariel_contact_alerts').countDocuments({}),carolCount);
+  console.log('Phase 5 onboarding and emergency contact checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
   fake.close();
