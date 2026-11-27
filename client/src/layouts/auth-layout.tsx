@@ -9,7 +9,7 @@ export function AuthLayout() {
   const clipId = useId()
   return <div className="auth-page"><section className={`auth-scene${pathname === '/register' ? ' auth-scene-register' : ''}`} aria-label="Authentication">
     <div className="auth-scene-content">
-      <div className="auth-topbar"><Link className="starter-brand auth-brand" to="/" aria-label="Tilcayo home"><BrandMark />Tilcayo</Link><WorkspaceIdentity /></div>
+      <div className="auth-topbar"><Link className="starter-brand auth-brand" to="/" aria-label="Sariel home"><BrandMark />SARIEL</Link><WorkspaceIdentity /></div>
       <div className="auth-scene-form"><Outlet /></div>
     </div>
     <div className="auth-scene-art" aria-hidden="true" style={{ clipPath: `url(#${clipId})` }}>

@@ -29,7 +29,7 @@ export function DashboardPage() {
             <Link to="/profile#account-security"><span className="account-icon-tile"><AccountIcon name="lock" /></span><div><h3>Account security</h3><p>Review your sign-in and password options.</p></div><AccountIcon name="arrow" /></Link>
           </div>
         </section>
-        <section className="account-card user-getting-started"><span className="account-icon-tile"><AccountIcon name="globe" /></span><div><h2>Get to know Tilcayo</h2><p>Learn more about the toolkit behind your workspace.</p><Link to="/about">About Tilcayo <AccountIcon name="arrow" /></Link></div></section>
+        <section className="account-card user-getting-started"><span className="account-icon-tile"><AccountIcon name="globe" /></span><div><h2>About Sariel</h2><p>How Sariel helps people stay safe and get help.</p><Link to="/about">About Sariel <AccountIcon name="arrow" /></Link></div></section>
       </div>
       <aside className="account-column" aria-label="Account overview">
         <section className="account-card user-account-snapshot"><h2>Account overview</h2><span className="account-avatar" aria-hidden="true">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : user?.name.trim().split(/\s+/).slice(0,2).map(part => part[0]).join('').toUpperCase() || 'Me'}</span><h3>{user?.name}</h3><p>{user?.email}</p><span className="account-role">{role}</span><Link className="tl-btn tl-btn-outline" to="/profile">View profile &amp; settings <AccountIcon name="arrow" /></Link></section>

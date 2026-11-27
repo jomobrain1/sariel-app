@@ -1,7 +1,8 @@
 type IconName = 'layers' | 'cube' | 'cursor' | 'code' | 'shield' | 'terminal'
 
 export function BrandMark() {
-  return <svg className="starter-brand-mark" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M3 4h12l-5 7H3l5-7Zm14 0h12L10 28H0L17 4Z" /></svg>
+  // Sariel mark: a shield with a check.
+  return <svg className="starter-brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path fill="#0f4d3f" d="M16 2 4 6.5v8.7c0 7.3 5.1 12.6 12 14.8 6.9-2.2 12-7.5 12-14.8V6.5Z" /><path fill="none" stroke="#fff" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" d="m10.5 16 3.8 3.8 7.5-7.6" /></svg>
 }
 export function ArrowIcon({ diagonal = false }: { diagonal?: boolean }) {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={diagonal ? 'M6 18 18 6M6 6h12v12' : 'M4 12h16m-6-6 6 6-6 6'} /></svg>

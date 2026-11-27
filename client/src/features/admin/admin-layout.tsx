@@ -19,7 +19,7 @@ export function ManagementLayout() {
       : pathname === '/admin/settings'
         ? [{ id: 'users', label: 'Users', tab: 'users' }, { id: 'access', label: 'Roles & access', tab: 'access' }, { id: 'trash', label: 'Trash', tab: 'trash' }]
         : [];
-  return <AdminLayout accountContent={<WorkspaceIdentity />} user={user} onLogout={logout} showGroupHeadings={false} links={
+  return <AdminLayout title="Sariel" accountContent={<WorkspaceIdentity />} user={user} onLogout={logout} showGroupHeadings={false} links={
     [...(access.currentData?.data.allowed ? [{ label: 'Incidents', to: '/admin/response', group: 'Response' }] : []),
      ...(can('tenants') || can('users') || can('access') || can('trash') ? [{ label: 'Settings', to: '/admin/settings', group: 'Account' }] : [])]
   } sections={sections.filter(section => can(section.tab))}><WorkspaceGate><Outlet /></WorkspaceGate></AdminLayout>;
