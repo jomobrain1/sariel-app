@@ -2,7 +2,7 @@
 // inboxes must not reveal names, places or danger levels. Full detail is shown only in the app.
 export type NotificationKind =
   | 'circle-invite' | 'circle-accepted' | 'check-in-request' | 'circle-update'
-  | 'welfare-reminder' | 'welfare-concern' | 'welfare-resolved' | 'photo-report' | 'photo-link-spread';
+  | 'welfare-reminder' | 'welfare-concern' | 'welfare-resolved' | 'photo-report' | 'photo-link-spread' | 'incident-new';
 
 export interface Rendered {
   title:string; body:string; link:string; priority:'normal'|'emergency';
@@ -33,6 +33,8 @@ export function render(kind:NotificationKind, data:Record<string, string>): Rend
       link:'/circle', priority:'emergency', external:['email', 'sms'], subject:'Please check on someone in your Sariel circle', text:urgent};
     case 'photo-link-spread': return {title:`${name}’s report link was opened by several people`, body:'Their report photo link has now been opened by at least 3 different people. Please check on them.',
       link:'/circle', priority:'emergency', external:['email', 'sms'], subject:'Please check on someone in your Sariel circle', text:urgent};
+    case 'incident-new': return {title:`New incident: ${data.level ?? 'Report'}`, body:`${data.channel ?? 'Report'} · ${data.category ?? 'welfare'}${data.note ? ` · “${data.note}”` : ''}`,
+      link:'/admin/incidents', priority:data.urgent === 'yes' ? 'emergency' : 'normal', external:['email'], subject:'A new incident needs attention in Sariel', text:'A new incident was reported in Sariel. Sign in to the admin console to review it.'};
     case 'welfare-resolved': return {title:`${name} checked in`, body:'They confirmed they’re OK.',
       link:'/circle', priority:'normal', external:['email'], subject:'Sariel circle update', text:discreet};
   }

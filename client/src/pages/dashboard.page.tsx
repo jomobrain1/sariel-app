@@ -24,7 +24,7 @@ export function DashboardPage() {
       <div className="account-column">
         <section className="account-card user-workspace"><div className="user-card-heading"><h2>Your workspace</h2><p>Pick up where you left off.</p></div>
           <div className="user-workspace-links">
-            <Link to="/elements"><span className="account-icon-tile"><AccountIcon name="dashboard" /></span><div><h3>Explore elements</h3><p>Find the building blocks for your next idea.</p></div><AccountIcon name="arrow" /></Link>
+            
             <Link to="/profile"><span className="account-icon-tile"><AccountIcon name="user" /></span><div><h3>Profile &amp; settings</h3><p>Update your details and account preferences.</p></div><AccountIcon name="arrow" /></Link>
             <Link to="/profile#account-security"><span className="account-icon-tile"><AccountIcon name="lock" /></span><div><h3>Account security</h3><p>Review your sign-in and password options.</p></div><AccountIcon name="arrow" /></Link>
           </div>

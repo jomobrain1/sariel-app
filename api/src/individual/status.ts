@@ -20,19 +20,24 @@ export interface StatusEvent {
   incident?:Incident; active:boolean; category:string; country?:string; note?:string; fingerprint:string;
 }
 export const events=()=>mongoose.connection.collection<StatusEvent>('sariel_safety_events');
+// Lets other features (platform notifications) react to new incidents without a circular import.
+const incidentListeners:((event:StatusEvent)=>Promise<void>)[]=[];
+export function onIncidentCreated(listener:(event:StatusEvent)=>Promise<void>){ incidentListeners.push(listener); }
 export async function recordStatus(owner:string,report:Report,channel:StatusEvent['channel']){
   const key=createHash('sha256').update(owner+'/'+report.requestId).digest('hex');
   const fingerprint=JSON.stringify([report.level,report.category,report.country??null,channel,...(report.note?[report.note]:[])]);
   const event:StatusEvent={_id:key,owner,level:report.level,category:report.category,country:report.country,
     active:report.level>=2,channel,createdAt:new Date(),fingerprint,...(report.note?{note:report.note}:{})};
   if(event.active) event.incident=pendingIncident(event);
-  try { await events().insertOne(event); }
+  let created=false;
+  try { await events().insertOne(event); created=true; }
   catch(error){
     if(!(error instanceof mongoose.mongo.MongoServerError && error.code===11000)) throw error;
     const existing=await events().findOne({_id:key});
     if(existing?.fingerprint!==fingerprint)
       throw createHttpError(409,'CONFLICT','Request ID already used for a different report.');
   }
+  if(created && event.active) await Promise.all(incidentListeners.map(listener=>listener(event).catch(()=>undefined)));
   // Commit intake first. If routing is interrupted, the pending queue and a retry
   // with the original request ID can both recover the same report.
   if(event.active){
