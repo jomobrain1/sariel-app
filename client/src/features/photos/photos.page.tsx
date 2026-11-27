@@ -1,7 +1,7 @@
 import { useMemo, useState, type ChangeEvent } from 'react';
 import { Navigate } from 'react-router';
 import { useAuth } from '../../app/auth';
-import { apiStatus } from '../../lib/api-status';
+import { apiCode, apiStatus } from '../../lib/api-status';
 import { AccountIcon } from '../../components/account-icon';
 import { drawScene, scenes, type Scene } from './landscapes';
 import { photosApi, type CoverPhoto } from './photos.api';
@@ -14,6 +14,7 @@ const MAX_BYTES = 6 * 1024 * 1024;
 
 function problem(error: unknown, fallback: string) {
   const status = apiStatus(error);
+  if (apiCode(error) === 'AI_BUSY') return 'The image service is busy right now. Try again in a minute, or use the library.';
   if (status === 503) return 'Image generation isn’t set up yet. Use the library or upload a photo instead.';
   if (status === 429) return 'Image generation is over its limit or not included in the current AI plan. Use the library or upload a photo.';
   if (status === 422 || status === 413) return 'That file can’t be used. Choose a PNG or JPEG under 6 MB.';

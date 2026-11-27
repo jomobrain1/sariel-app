@@ -96,13 +96,23 @@ async function track<T extends {usage:{input:number; output:number}}>(
   await enforceLimit(user, resolved.settings.dailyLimit);
   const base = {_id:randomUUID(), at:new Date(), user, capability, purpose, provider:resolved.provider, model:resolved.model};
   try {
-    const result = await run(resolved);
+    // Overloaded or slow providers often recover within seconds, so retry once before giving up.
+    let result: T;
+    try { result = await run(resolved); }
+    catch (error) {
+      if (!(error instanceof ProviderError && error.retryable)) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      result = await run(resolved);
+    }
     await usage().insertOne({...base, input:result.usage.input, output:result.usage.output, ok:true});
     return {...result, provider:resolved.provider, model:resolved.model};
   } catch (error) {
     await usage().insertOne({...base, input:0, output:0, ok:false, error:error instanceof Error ? error.message.slice(0, 300) : 'failed'});
-    if (error instanceof ProviderError) throw createHttpError(error.status === 429 ? 429 : 502, 'AI_PROVIDER_ERROR',
-      error.status === 429 ? 'The AI service is busy or over its quota. Try again later.' : 'The AI service rejected the request. An administrator may need to check the model in AI providers.');
+    if (error instanceof ProviderError) {
+      if (error.status === 429) throw createHttpError(429, 'AI_QUOTA', 'The AI service is over its quota or rate limit. Try again later.');
+      if (error.retryable) throw createHttpError(503, 'AI_BUSY', 'The AI service is busy right now. Please try again in a minute.');
+      throw createHttpError(502, 'AI_PROVIDER_ERROR', 'The AI service rejected the request. An administrator may need to check the model in AI providers.');
+    }
     throw error;
   }
 }

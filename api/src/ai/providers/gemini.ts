@@ -7,21 +7,21 @@ type GeminiPart = {text?:string; thought?:boolean; functionCall?:{id?:string; na
   functionResponse?:{id?:string; name:string; response:Record<string, unknown>}; inlineData?:{mimeType:string; data:string}; [key:string]:unknown};
 type GeminiContent = {role:'user'|'model'; parts:GeminiPart[]};
 
-async function call(config:ProviderConfig, path:string, body:unknown) {
+async function call(config:ProviderConfig, path:string, body:unknown, timeoutMs = 45_000) {
   const base = (config.baseUrl || process.env.GEMINI_BASE_URL || DEFAULT_BASE).replace(/\/$/, '');
   let response: Response;
   try {
-    response = await fetch(`${base}/${path}`, {method:'POST', signal:AbortSignal.timeout(120_000), redirect:'error',
+    response = await fetch(`${base}/${path}`, {method:'POST', signal:AbortSignal.timeout(timeoutMs), redirect:'error',
       headers:{'Content-Type':'application/json', 'x-goog-api-key':config.apiKey}, body:JSON.stringify(body)});
   } catch (error) {
-    throw new ProviderError('Gemini could not be reached: ' + (error instanceof Error ? error.message : 'network error'), 502, true);
+    throw new ProviderError('Gemini did not respond in time or could not be reached: ' + (error instanceof Error ? error.message : 'network error'), 503, true);
   }
   const text = await response.text();
   if (!response.ok) {
     let detail = '';
     try { detail = (JSON.parse(text) as {error?:{message?:string}}).error?.message ?? ''; } catch { /* Not JSON. */ }
     throw new ProviderError(`Gemini responded ${response.status}${detail ? ': ' + detail.slice(0, 200) : ''}`,
-      response.status === 401 || response.status === 403 ? 502 : response.status === 429 ? 429 : 502, response.status === 429 || response.status >= 500);
+      response.status === 429 ? 429 : response.status >= 500 ? 503 : 502, response.status >= 500);
   }
   return JSON.parse(text) as Record<string, unknown>;
 }
@@ -98,7 +98,7 @@ export const gemini: ChatProvider & EmbeddingProvider & ImageProvider = {
     const body = await call(config, `models/${encodeURIComponent(config.model)}:generateContent`, {
       contents:[{role:'user', parts:[{text:prompt}]}],
       generationConfig:{responseModalities:['IMAGE', 'TEXT']},
-    });
+    }, 90_000);
     const parts = ((body.candidates as {content?:GeminiContent}[] | undefined)?.[0]?.content?.parts ?? []);
     const image = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'))?.inlineData;
     if (!image) throw new ProviderError('Gemini did not return an image. Try another theme or model.');
