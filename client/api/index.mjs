@@ -6,6 +6,13 @@ import { connectMongo } from '@tilcayo/core';
 // Timers don't survive between serverless invocations, so background jobs run through /api/cron/jobs instead.
 process.env.SARIEL_WORKERS = 'off';
 
+// Tenancy treats a request as the main site only when its host equals TENANCY_BASE_DOMAIN exactly.
+// Accept values pasted as URLs ("https://x.vercel.app/") and fall back to the project's production domain.
+const host = value => value?.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/[/:].*$/, '') || undefined;
+const domain = host(process.env.TENANCY_BASE_DOMAIN) ?? host(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+if (domain) process.env.TENANCY_BASE_DOMAIN = domain;
+if (!process.env.APP_URL && domain) process.env.APP_URL = `https://${domain}`;
+
 const { config } = await import('../../api/dist/config.js');
 const { default: app } = await import('../../api/dist/app.js');
 const { runJobsOnce } = await import('../../api/dist/jobs/worker.js');
