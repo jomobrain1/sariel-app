@@ -137,3 +137,13 @@
 .circle-trail li span {color:#5b6b66}
 .circle-contacts .contacts {margin-top:16px}
 .circle-grid + .circle-contacts,.circle-contacts {margin-top:24px}
+
+/* Quick update options: soft tiles instead of outlined ovals */
+.circle-presets {gap:8px;margin-top:14px}
+.circle-presets button {min-height:36px;padding:0 14px;border:1px solid transparent;border-radius:10px;background:#f1f6f3;color:#1d3a32;font-weight:600;font-size:.9rem;transition:background .15s,border-color .15s}
+.circle-presets button:hover {background:#e4efe9;border-color:transparent}
+.circle-presets button[aria-pressed=true] {background:#0f4d3f;border-color:#0f4d3f;color:#fff}
+.circle-composer form {margin-top:14px}
+.circle-composer textarea {border-radius:12px;background:#fbfcfc;min-height:84px}
+.circle-composer textarea:focus {background:#fff}
+.circle-composer-bar small {font-size:.85rem}
