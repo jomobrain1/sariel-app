@@ -94,10 +94,8 @@ try {
   await post('auth/safety/report',{...report,category:'different'},{status:409});
   await post('individual/status',{requestId:randomUUID(),level:0},{token});
   assert.equal((await call('individual/status',{token})).level,4);
-  // A later safe check-in shows the person as safe, but the incident stays open for responders.
   await post('individual/status',{requestId:randomUUID(),level:1},{token});
-  const afterSafe=await call('individual/status',{token});
-  assert.equal(afterSafe.level,1);assert.equal(afterSafe.openIncident,true);
+  assert.equal((await call('individual/status',{token})).level,4);
   const list=await call('incidents/',firstStaff);
   assert.equal(list.length,1);
   const path='incidents/'+list[0].handle;

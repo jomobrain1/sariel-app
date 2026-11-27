@@ -264,9 +264,7 @@ try {
   // The check-in endpoint resets the schedule and records a safe status.
   w=await post('individual/welfare/check-in',undefined,{token:alice.token});
   assert(new Date(w.dueAt).getTime()>Date.now()+5*H);
-  // The person shows as safe, while the earlier incident stays open for responders.
-  const afterCheckIn=await call('individual/status',{token:alice.token});
-  assert.equal(afterCheckIn.level,1);assert.equal(afterCheckIn.openIncident,true);
+  assert.equal((await call('individual/status',{token:alice.token})).level,2);
 
   // Without escalation configured, a concern never becomes an incident; location stays private when not allowed.
   await call('individual/welfare',{method:'PUT',body:{...plan,shareLocation:false,escalateAfterHours:null},token:alice.token});

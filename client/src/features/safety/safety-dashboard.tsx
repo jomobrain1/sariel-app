@@ -140,7 +140,7 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
           <p>{current?.reportedAt ? `Reported ${date(current.reportedAt)}` : 'No reports yet'}</p></>}
         <div className="safety-current-foot">
           <button disabled={busy} onClick={()=>void submit({level:1,category:'welfare'})}>Confirm I’m safe</button>
-          {current?.openIncident && <small>{current.level === 1 ? 'Your report stays open for responders until they close it.' : 'Checking in shows you as safe. Your report stays open for responders.'}</small>}
+          {current && current.level>=2 && <small>Checking in keeps your active incident open.</small>}
         </div>
       </section>
       <WelfareCard/>

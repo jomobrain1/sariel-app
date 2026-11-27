@@ -5,7 +5,7 @@ export type Update = { level: number; category: string; country?: string; note?:
 type Event = { _id: string; level: number; active: boolean; channel: 'account' | 'gateway' | 'welfare' | 'image'; category?: string; createdAt: string };
 
 export const safetyApi = tilcayoApi.enhanceEndpoints({ addTagTypes: ['Safety'] }).injectEndpoints({ endpoints: b => ({
-  safetyStatus: b.query<{data: {level: number; reportedAt: string | null; openIncident?: boolean}}, string>({query: () => '/individual/status', providesTags: ['Safety']}),
+  safetyStatus: b.query<{data: {level: number; reportedAt: string | null}}, string>({query: () => '/individual/status', providesTags: ['Safety']}),
   safetyHistory: b.query<{data: Event[]}, string>({query: () => '/individual/status/history', providesTags: ['Safety']}),
   submitSafetyUpdate: b.mutation<{data: {reference: string}}, Update>({query: body => ({url:'/individual/status', method:'POST', body}), invalidatesTags: ['Safety']}),
   issueIncidentLink: b.mutation<{data:{url:string}}, Omit<Update,'requestId'> & {alias?:string}>({
