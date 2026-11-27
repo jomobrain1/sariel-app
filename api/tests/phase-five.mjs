@@ -361,6 +361,20 @@ try {
   // Still only one incident for this photo.
   assert.equal((await call('individual/status/history',{token:alice.token})).filter(e=>e.channel==='image'&&e.active).length,1);
   console.log('Phase 5 description and link spread checks passed.');
+
+  // ── Superadmin notifications ─────────────────────────────
+  await mongoose.connection.collection('sariel_safety_events').updateMany({owner:alice.id},{$set:{active:false}});
+  await post('individual/status',{requestId:randomUUID(),level:5,category:'trafficking',note:'Locked in the house'},{token:alice.token});
+  const adminInbox=(await call('individual/notifications',{token:admin})).items;
+  const newIncident=adminInbox.find(n=>n.kind==='incident-new'&&n.title==='New incident: Critical danger');
+  assert(newIncident,'superadmin is told about new incidents');
+  assert.equal(newIncident.priority,'emergency');assert.equal(newIncident.link,'/admin/incidents');
+  assert.match(newIncident.body,/In-app report · trafficking · “Locked in the house”/);
+  // Routine check-ins don't notify admins.
+  const adminCount=adminInbox.length;
+  await post('individual/status',{requestId:randomUUID(),level:1,category:'welfare'},{token:alice.token});
+  assert.equal((await call('individual/notifications',{token:admin})).items.length,adminCount);
+  console.log('Phase 5 superadmin notification checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
   fake.close();

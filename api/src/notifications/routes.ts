@@ -4,6 +4,19 @@ import { auth } from '../auth.js';
 import { individual } from '../individual/account.js';
 import { onCircleEvent, recipients } from '../circle/members.js';
 import { defaultPreferences, deliveries, ensureNotificationIndexes, notifications, notify, preferences } from './engine.js';
+import mongoose from 'mongoose';
+import { onIncidentCreated } from '../individual/status.js';
+
+const levelNames = ['Unknown', 'Confirmed safe', 'Assistance needed', 'Safety concern', 'Serious danger', 'Critical danger'];
+const channelNames:Record<string, string> = {account:'In-app report', gateway:'Reporting link', welfare:'Missed check-in', image:'Report photo', public:'Public report'};
+// Every new incident alerts the platform administrators; serious ones are urgent.
+onIncidentCreated(async event => {
+  const admins = await mongoose.connection.collection('users').find({roles:'superadmin', deletedAt:null}, {projection:{_id:1}}).toArray();
+  await Promise.all(admins.map(admin => notify(String(admin._id), 'incident-new', {
+    level:levelNames[event.level] ?? 'Report', channel:channelNames[event.channel] ?? 'Report', category:event.category,
+    ...(event.note ? {note:event.note.slice(0, 160)} : {}), urgent:event.level >= 4 ? 'yes' : 'no',
+  }, 'incident-new:' + event._id)));
+});
 
 // Circle activity becomes notifications. Removal and leaving are deliberately silent.
 onCircleEvent(async event => {
