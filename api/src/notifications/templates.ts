@@ -2,7 +2,7 @@
 // inboxes must not reveal names, places or danger levels. Full detail is shown only in the app.
 export type NotificationKind =
   | 'circle-invite' | 'circle-accepted' | 'check-in-request' | 'circle-update'
-  | 'welfare-reminder' | 'welfare-concern' | 'welfare-resolved' | 'photo-report' | 'photo-link-spread' | 'incident-new' | 'circle-incident' | 'contact-alert';
+  | 'welfare-reminder' | 'welfare-concern' | 'welfare-resolved' | 'photo-report' | 'photo-link-spread' | 'incident-new' | 'circle-incident' | 'contact-alert' | 'public-report';
 
 export interface Rendered {
   title:string; body:string; link:string; priority:'normal'|'emergency';
@@ -37,6 +37,10 @@ export function render(kind:NotificationKind, data:Record<string, string>): Rend
       link:'/circle', priority:'emergency', external:['email', 'sms'], subject:'Please check on someone in your Sariel circle', text:urgent};
     case 'contact-alert': return {title:`${name} may need help`, body:`${name} listed you as an emergency contact. ${data.detail ?? ''} Try contacting them now.`.trim(),
       link:'/notifications', priority:'emergency', external:['email', 'sms'], subject:'Someone who trusts you may need help', text:'Someone who listed you as an emergency contact on Sariel may need help. Sign in to Sariel to see details.'};
+    case 'public-report': return {title:`Public report from ${data.country ?? 'unknown country'}${data.urgency === 'urgent' ? ' · urgent' : ''}`,
+      body:`${data.summary ?? ''}${data.media && data.media !== '0' ? ` · ${data.media} file(s) attached` : ''}`, link:'/admin/public-reports',
+      priority:data.urgency === 'urgent' ? 'emergency' : 'normal', external:['email'], subject:'A new public report needs review in Sariel',
+      text:'Someone submitted a public report in Sariel. Sign in to the admin console to review it.'};
     case 'incident-new': return {title:`New incident: ${data.level ?? 'Report'}`, body:`${data.channel ?? 'Report'} · ${data.category ?? 'welfare'}${data.note ? ` · “${data.note}”` : ''}`,
       link:'/admin/incidents', priority:data.urgent === 'yes' ? 'emergency' : 'normal', external:['email'], subject:'A new incident needs attention in Sariel', text:'A new incident was reported in Sariel. Sign in to the admin console to review it.'};
     case 'welfare-resolved': return {title:`${name} checked in`, body:'They confirmed they’re OK.',

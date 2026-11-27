@@ -8,6 +8,7 @@ import './platform.css';
 const primary = [
   ['Organizations', 'workspaces', 'globe'],
   ['Incidents', 'incidents', 'activity'],
+  ['Public reports', 'public-reports', 'activity'],
   ['Photo check', 'photo-check', 'image'],
   ['Users', 'users', 'user'],
 ] as const;

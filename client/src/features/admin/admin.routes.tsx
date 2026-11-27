@@ -2,6 +2,7 @@ import { PlatformIncidents } from '../administration/incidents.page';
 import { AiSettingsPage } from '../administration/ai-settings.page';
 import { PhotoCheckPage } from '../administration/photo-check.page';
 import { OrgIncidentsPage } from '../administration/org-incidents.page';
+import { AdminPublicReportsPage } from '../public-reports/admin-public-reports.page';
 import { NotificationsPage } from '../notifications/notifications.page';
 import { PlatformSettings, AuditPage } from '../administration/configuration';
 import { TrashPage } from './trash.page';
@@ -30,6 +31,7 @@ export const adminRoutes: RouteObject[] = [{
     { path: 'ai-settings', element: <AiSettingsPage /> },
     { path: 'photo-check', element: <PhotoCheckPage /> },
     { path: 'response', element: <OrgIncidentsPage /> },
+    { path: 'public-reports', element: <AdminPublicReportsPage /> },
     { path: 'notifications', element: <NotificationsPage /> },
     { path: 'audit', element: <AuditPage /> },
     { path: 'recovery', element: <TrashPage /> },

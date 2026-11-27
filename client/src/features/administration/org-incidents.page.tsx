@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { orgIncidentsApi, type OrgCommand } from './org-incidents.api';
+import { OrgPublicReports } from '../public-reports/admin-public-reports.page';
 import './org-incidents.css';
 
 const when = (value: string) => new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -63,6 +64,7 @@ export function OrgIncidentsPage() {
   const [page, setPage] = useState(1);
   const list = orgIncidentsApi.useOrgIncidentsQuery(page, { skip: !allowed, pollingInterval: 30_000 });
   const [selected, setSelected] = useState<string | null>(null);
+  const [tab, setTab] = useState<'incidents' | 'public'>('incidents');
   if (access.isLoading) return <section className="org-page"><p role="status">Loading…</p></section>;
   const state = access.currentData?.data;
   if (!state?.allowed) return <section className="org-page"><div className="org-wait">
@@ -73,8 +75,10 @@ export function OrgIncidentsPage() {
   </div></section>;
   const rows = list.currentData?.data ?? [];
   return <section className="org-page" aria-labelledby="org-title">
-    <header className="org-head"><h1 id="org-title">Incidents</h1><p>Incidents routed to your organisation.</p></header>
-    <div className="org-grid">
+    <header className="org-head"><h1 id="org-title">Incidents</h1><p>Incidents routed to your organisation, and public reports from the countries you cover.</p>
+      <div className="org-tabs" role="tablist">{([['incidents', 'Incidents'], ['public', 'Public reports']] as const).map(([key, label]) =>
+        <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}</button>)}</div></header>
+    {tab === 'public' ? <OrgPublicReports /> : <div className="org-grid">
       <section className="org-list" aria-label="Incident list">
         {list.isError ? <p role="alert" className="org-empty">Couldn’t load incidents.</p> : !list.currentData ? <p role="status" className="org-empty">Loading…</p>
           : rows.length ? <ul>{rows.map(r => <li key={r.handle}><button aria-pressed={selected === r.handle} onClick={() => setSelected(r.handle)}>
@@ -83,6 +87,6 @@ export function OrgIncidentsPage() {
         <nav className="org-pages"><button className="org-ghost" disabled={page === 1} onClick={() => setPage(page - 1)}>Newer</button><button className="org-ghost" disabled={rows.length < 50} onClick={() => setPage(page + 1)}>Older</button></nav>
       </section>
       <section className="org-pane">{selected ? <Detail key={selected} handle={selected} /> : <p className="org-empty">Choose an incident to see details and respond.</p>}</section>
-    </div>
+    </div>}
   </section>;
 }

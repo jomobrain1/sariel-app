@@ -471,6 +471,29 @@ try {
   await post('auth/safety/activate',{token:'alicemail7'},{status:204});
   assert.equal(await mongoose.connection.collection('sariel_contact_alerts').countDocuments({}),carolCount);
   console.log('Phase 5 onboarding and emergency contact checks passed.');
+
+  // ── Public reports (anyone, no account) ──────────────────
+  const anon=(path,body,status=200)=>call(path,{method:body===undefined?'GET':'POST',body,status});
+  assert.equal((await anon('auth/public-reports/config')).uploads,false);
+  await anon('auth/public-reports',{description:'short',country:'KE'},422);
+  await anon('auth/public-reports',{description:'A woman is being kept locked in a house in Kileleshwa.',country:'KE',website:'spam'},422);
+  const draftReport=await anon('auth/public-reports',{description:'A woman is being kept locked in a house and asked a neighbour for help.',country:'KE',place:'Kileleshwa, Nairobi',urgency:'urgent',contact:'+254700111222'},201);
+  assert.match(draftReport.token,/^[A-Za-z0-9_-]{32}$/);
+  await anon('auth/public-reports/'+draftReport.id+'/uploads',{token:draftReport.token,filename:'clip.mp4',bytes:1000},503);
+  await anon('auth/public-reports/'+draftReport.id+'/submit',{token:'x'.repeat(32)},404);
+  assert.deepEqual(await anon('auth/public-reports/'+draftReport.id+'/submit',{token:draftReport.token}),{received:true});
+  await anon('auth/public-reports/'+draftReport.id+'/submit',{token:draftReport.token},404);
+  const reportAlert=(await call('individual/notifications',{token:admin})).items.find(n=>n.kind==='public-report');
+  assert.equal(reportAlert.title,'Public report from KE · urgent');assert.equal(reportAlert.priority,'emergency');
+  await call('platform/public-reports',{token:alice.token,status:403});
+  const openReports=await call('platform/public-reports',{token:admin});
+  assert.equal(openReports[0].id,draftReport.id);assert.equal(openReports[0].place,'Kileleshwa, Nairobi');
+  await call('platform/public-reports/'+draftReport.id+'/update',{method:'POST',body:{status:'reviewing',note:'Called local partner'},token:admin,status:204});
+  const reviewed=await call('platform/public-reports/'+draftReport.id,{token:admin});
+  assert.equal(reviewed.status,'reviewing');assert.equal(reviewed.notes[0].text,'Called local partner');assert.equal(reviewed.contact,'+254700111222');
+  // Individuals (no organisation) can't read the organisation view.
+  await call('organization/public-reports',{token:alice.token,status:403});
+  console.log('Phase 5 public report checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
   fake.close();
