@@ -38,3 +38,50 @@
 .photo-empty {display:grid;justify-items:center;gap:8px;padding:36px 12px;text-align:center;color:#5b6b66}
 .photo-empty .account-icon {width:28px;height:28px;color:#0f4d3f}
 .photo-empty p {margin:0;max-width:36ch}
+.photo-sub {margin:-8px 0 16px;color:#5b6b66}
+.photo-primary {display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 14px;border:1px solid #0f4d3f;border-radius:8px;background:#0f4d3f;color:#fff;font-weight:700;text-decoration:none;cursor:pointer;font:inherit}
+.photo-actions {flex-wrap:wrap}
+.report-form,.report-result {display:grid;gap:16px;width:min(460px,78vw);max-width:100%;color:#14231f}
+.report-form p {margin:0;color:#5b6b66}
+.report-form fieldset {margin:0;padding:0;border:0}
+.report-form legend {font-weight:700;margin-bottom:10px}
+.report-levels {display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.report-level {display:flex;align-items:center;gap:10px;min-height:46px;padding:0 12px;border:1px solid #d3dbd8;border-radius:8px;cursor:pointer}
+.report-level:has(:checked) {border-color:#0f4d3f;background:#eef6f2}
+.report-level input {accent-color:#0f4d3f}
+.report-fields {display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
+.report-fields label,.report-steps label {display:grid;gap:6px;font-weight:700;font-size:.9rem}
+.report-fields :is(select,input),.report-copy input {min-height:42px;padding:0 10px;border:1px solid #c9d3cf;border-radius:8px;font:inherit;font-weight:500;background:#fff;color:inherit;min-width:0}
+.report-form .photo-primary {justify-self:start;min-height:44px;padding:0 20px}
+.report-result img {width:100%;max-height:260px;object-fit:cover;border-radius:10px}
+.report-steps {display:grid;gap:12px}
+.report-ok {display:block;margin:0;padding:10px 12px;border-radius:8px;background:#eef6f2;color:#0f4d3f;line-height:1.45}
+.report-ok .account-icon {width:16px;height:16px;vertical-align:-3px;margin-right:4px}
+.report-steps > .photo-primary {justify-self:start;min-height:42px;padding:0 18px}
+.report-copy {display:flex;gap:8px}
+.report-copy input {flex:1}
+.report-how summary {cursor:pointer;font-weight:700;color:#0f4d3f}
+.report-how ul {margin:8px 0 0;padding-left:18px;line-height:1.55;color:#3d4d48}
+.report-steps > .photo-ghost {justify-self:start}
+.report-list-head {display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.report-list-head h2 {margin:0}
+.report-list-head p {margin:4px 0 0;color:#5b6b66}
+.report-note {margin:0 0 10px;color:#0f4d3f}
+.report-list {list-style:none;margin:0;padding:0}
+.report-list li {display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid #e3e9e6}
+.report-list li > div:first-of-type {flex:1;min-width:0;display:grid;gap:2px}
+.report-list small {color:#5b6b66}
+.report-list li.is-revoked {opacity:.6}
+.report-dot {width:12px;height:12px;border-radius:50%;flex:none;background:#8a5a00}
+.report-dot.level-4,.report-dot.level-5 {background:#a3342b}
+.report-tag {padding:3px 10px;border-radius:999px;background:#f2f4f3;color:#5b6b66;font-size:.8rem;font-weight:700}
+@media(max-width:560px){.report-levels,.report-fields{grid-template-columns:1fr}.report-list li{flex-wrap:wrap}}
+.share-page {max-width:560px}
+.share-card {display:grid;justify-items:center;gap:12px;text-align:center}
+.share-card h1 {margin:0;font-size:1.8rem}
+.share-card p {margin:0;color:#5b6b66}
+.share-card .photo-drop {width:100%;box-sizing:border-box}
+.share-icon {display:grid;place-items:center;width:52px;height:52px;border-radius:16px;background:#e4f1ea;color:#0f4d3f}
+.share-icon .account-icon {width:26px;height:26px}
+.report-result img {max-height:220px}
+.report-copy {min-width:0}

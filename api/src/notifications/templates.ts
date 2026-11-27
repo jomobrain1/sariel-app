@@ -2,7 +2,7 @@
 // inboxes must not reveal names, places or danger levels. Full detail is shown only in the app.
 export type NotificationKind =
   | 'circle-invite' | 'circle-accepted' | 'check-in-request' | 'circle-update'
-  | 'welfare-reminder' | 'welfare-concern' | 'welfare-resolved';
+  | 'welfare-reminder' | 'welfare-concern' | 'welfare-resolved' | 'photo-report';
 
 export interface Rendered {
   title:string; body:string; link:string; priority:'normal'|'emergency';
@@ -28,6 +28,8 @@ export function render(kind:NotificationKind, data:Record<string, string>): Rend
     case 'welfare-reminder': return {title:'Time to check in', body:'Your scheduled check-in is due. Tap “I’m OK” to let your circle know.',
       link:'/dashboard', priority:'normal', external:['email', 'sms'], subject:'Sariel check-in reminder', text:'Your Sariel check-in is due. Sign in to check in.'};
     case 'welfare-concern': return {title:`${name} missed a check-in`, body:data.detail ?? 'Their status is now Unknown. Try contacting them.',
+      link:'/circle', priority:'emergency', external:['email', 'sms'], subject:'Please check on someone in your Sariel circle', text:urgent};
+    case 'photo-report': return {title:`${name} may need help`, body:'They sent a Sariel report photo. Their safety status has changed. Try contacting them now.',
       link:'/circle', priority:'emergency', external:['email', 'sms'], subject:'Please check on someone in your Sariel circle', text:urgent};
     case 'welfare-resolved': return {title:`${name} checked in`, body:'They confirmed they’re OK.',
       link:'/circle', priority:'normal', external:['email'], subject:'Sariel circle update', text:discreet};

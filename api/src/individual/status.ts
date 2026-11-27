@@ -14,7 +14,7 @@ export const reportInput=z.strictObject({
 const update=reportInput.extend({level:z.number().int().min(0).max(5)});
 export type Report=z.output<typeof update>;
 export interface StatusEvent {
-  _id:string; owner:string; level:number; channel:'account'|'gateway'|'welfare'; createdAt:Date;
+  _id:string; owner:string; level:number; channel:'account'|'gateway'|'welfare'|'image'; createdAt:Date;
   incident?:Incident; active:boolean; category:string; country?:string; fingerprint:string;
 }
 export const events=()=>mongoose.connection.collection<StatusEvent>('sariel_safety_events');

@@ -121,7 +121,8 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
         </section>
         <WelfareCard/>
         <IncidentLink/>
-        <Link to="/photos" className="safety-panel safety-photos"><span className="safety-link-icon"><AccountIcon name="globe"/></span><span>Photos</span><AccountIcon name="arrow"/></Link>
+        <Link to="/assistant" className="safety-panel safety-photos"><span className="safety-link-icon"><AccountIcon name="chat"/></span><span>Assistant<small>Ask about your safety, circle or check-ins</small></span><AccountIcon name="arrow"/></Link>
+        <Link to="/photos" className="safety-panel safety-photos"><span className="safety-link-icon"><AccountIcon name="image"/></span><span>Report photos<small>Hide a report inside an ordinary photo</small></span><AccountIcon name="arrow"/></Link>
       </div>
     </div>
     <section className="safety-panel safety-history"><h2>Recent safety activity</h2>
