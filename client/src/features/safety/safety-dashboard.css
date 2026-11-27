@@ -86,7 +86,6 @@
 .safety-dot.level-4,.safety-dot.level-5 {background:#b3261e}
 
 .safety-feedback {padding:12px 16px;margin:0 0 18px;background:var(--soft);border:1px solid #cfe3d9;border-radius:10px;overflow-wrap:anywhere}
-.safety-feedback summary {cursor:pointer;font-weight:600}
 
 /* One-tap link (inside its dialog) */
 .safety-link {display:grid;gap:12px;width:min(460px,78vw);max-width:100%;color:var(--ink,#14231f)}

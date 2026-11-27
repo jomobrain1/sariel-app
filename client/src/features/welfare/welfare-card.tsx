@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { AccountIcon } from '../../components/account-icon';
+import { Toggle } from '../../components/toggle';
 import { welfareApi, type WelfareOverview, type WelfareSettings } from './welfare.api';
 import './welfare.css';
 
@@ -81,9 +82,9 @@ export function WelfareCard() {
         }}>Turn off</button>
       </div>
       {saving.isError && <p role="alert" className="welfare-error">Couldn’t turn off check-ins. Try again.</p>}
-      {!!data.events.length && <details className="welfare-history"><summary>History</summary>
+      {!!data.events.length && <Toggle className="welfare-history" icon="calendar" title="History" count={Math.min(data.events.length, 10)}>
         <ol>{data.events.slice(0, 10).map(e => <li key={e.id}><span>{eventText[e.kind] ?? e.kind}{e.detail && <small>{e.detail}</small>}</span><time dateTime={e.at}>{date(e.at)}</time></li>)}</ol>
-      </details>}
+      </Toggle>}
     </> : <>
       <p className="welfare-explain">If you miss a check-in, we remind you first. If you still don’t respond, your status shows as Unknown and your circle is asked to reach out. Missing a check-in is never treated as an emergency unless you choose that.</p>
       <button className="welfare-primary" onClick={() => setEditing(true)}>Set up check-ins</button>

@@ -21,3 +21,27 @@
 code { font-family: var(--tl-font-mono); font-size: 0.9em; overflow-wrap: anywhere; }
 .tl-btn-secondary { border-color: var(--tl-border); }
 .tl-alert, .tl-badge { background: #ffffff; }
+
+/* Shared collapsible sections (components/toggle.tsx), matching the dashboard tool rows. */
+.sariel-toggle {border:1px solid #e3e9e6;border-radius:12px;background:#fff;overflow:hidden}
+.sariel-toggle > summary {list-style:none;display:flex;align-items:center;gap:12px;padding:10px 12px;cursor:pointer;color:#14231f;user-select:none}
+.sariel-toggle > summary::-webkit-details-marker {display:none}
+.sariel-toggle > summary::after {content:"";flex:none;width:16px;height:16px;margin-left:auto;background:#5b6b66;transition:transform .15s ease;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 5 7 7-7 7'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 5 7 7-7 7'/%3E%3C/svg%3E") center/contain no-repeat}
+.sariel-toggle[open] > summary::after {transform:rotate(90deg)}
+.sariel-toggle > summary:hover {background:#f6faf8}
+.sariel-toggle > summary:focus-visible {outline:3px solid #25866f;outline-offset:-3px}
+.sariel-toggle[open] > summary {border-bottom:1px solid #edf1ef}
+.sariel-toggle-icon {flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#eaf3ef;color:#0f4d3f}
+.sariel-toggle-icon .account-icon {width:18px;height:18px}
+.sariel-toggle-title {display:grid;gap:1px;min-width:0}
+.sariel-toggle-title strong {font-size:.95rem;font-weight:700}
+.sariel-toggle-title small {color:#5b6b66;font-size:.82rem;font-weight:400}
+.sariel-toggle-count {flex:none;min-width:22px;padding:2px 8px;box-sizing:border-box;border-radius:999px;background:#eef6f2;color:#0f4d3f;font-size:.78rem;font-weight:700;text-align:center}
+.sariel-toggle-body {padding:12px 14px}
+.sariel-toggle-body > :first-child {margin-top:0}
+.sariel-toggle-body > :last-child {margin-bottom:0}
+@media (prefers-reduced-motion: reduce) {.sariel-toggle > summary::after {transition:none}}
+.sariel-toggle-body > :is(ol,ul):first-child {margin-top:0}
+.sariel-toggle-body > :is(ol,ul):first-child > li:first-child {border-top:0;padding-top:0}

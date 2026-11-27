@@ -60,7 +60,6 @@
 .report-steps > .photo-primary {justify-self:start;min-height:42px;padding:0 18px}
 .report-copy {display:flex;gap:8px}
 .report-copy input {flex:1}
-.report-how summary {cursor:pointer;font-weight:700;color:#0f4d3f}
 .report-how ul {margin:8px 0 0;padding-left:18px;line-height:1.55;color:#3d4d48}
 .report-steps > .photo-ghost {justify-self:start}
 .report-list-head {display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}

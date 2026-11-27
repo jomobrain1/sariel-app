@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Toggle } from '../../components/toggle';
 import { tilcayoApi } from '../../app/api';
 import { useAuth } from '../../app/auth';
 import { configApi } from './configuration.api';
@@ -35,7 +36,7 @@ export function Workforce({id}:{id:string}){
 }
 export function RoutingSettings({id}:{id:string}){
   return <><Configuration title="Routing configuration" path={'admin/routing/'+id} initial={{rules:[]}}/>
-    <details><summary>Example routing rule</summary><p>Use a JSON list. Referral targets use the workspace ID shown below.</p><code>{JSON.stringify([{name:'Welfare assistance',priority:1,countries:['KE'],nationalities:['KE'],incidentCategories:['welfare'],capabilities:['welfare'],severities:['high'],availableOnly:true,referralTenantIds:[],authorization:'explicit-consent',disclose:['category']}])}</code><p>Workspace ID {id}</p></details></>;
+    <Toggle icon="edit" title="Example routing rule"><p>Use a JSON list. Referral targets use the workspace ID shown below.</p><code>{JSON.stringify([{name:'Welfare assistance',priority:1,countries:['KE'],nationalities:['KE'],incidentCategories:['welfare'],capabilities:['welfare'],severities:['high'],availableOnly:true,referralTenantIds:[],authorization:'explicit-consent',disclose:['category']}])}</code><p>Workspace ID {id}</p></Toggle></>;
 }
 export function StaffPanel(){
   const {user}=useAuth();

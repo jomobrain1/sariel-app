@@ -22,7 +22,6 @@
 .safety-dashboard .welfare-card .welfare-ghost,.welfare-card .welfare-ghost {min-height:44px;padding:0 16px;border:1px solid #c9d3cf;border-radius:8px;background:#fff;color:#0f4d3f;font-weight:600;cursor:pointer}
 .safety-dashboard .welfare-card .welfare-link,.welfare-card .welfare-link {min-height:auto;padding:0;border:0;background:none;color:#5b6b66;text-decoration:underline;font-weight:500;cursor:pointer;margin-left:auto}
 .welfare-card button:disabled {opacity:.6;cursor:wait}
-.welfare-history summary {cursor:pointer;font-weight:600;color:#0f4d3f}
 .welfare-history ol {list-style:none;margin:10px 0 0;padding:0}
 .welfare-history li {display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #e1e9e5;font-size:.92rem}
 .welfare-history li span {display:grid;gap:2px}
