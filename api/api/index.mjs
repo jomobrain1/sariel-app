@@ -56,8 +56,12 @@ export default async function sariel(req, res) {
   if (process.env.VERCEL && domain && requestHost?.endsWith('.vercel.app')) req.headers.host = domain;
   // The vercel.json rewrite (/api/:path*) appends its unused `path` parameter to the query string.
   // Strict validators (like the admin users list) reject unknown parameters, so remove it again.
+  // It may arrive as one value ("admin/users") or one per segment ("admin", "users"), so compare segments.
   const url = new URL(req.url ?? '/', 'http://local');
-  if (url.searchParams.get('path') === url.pathname.replace(/^\/api\//, '')) {
+  res.setHeader('X-Sariel-Query-Keys', [...url.searchParams.keys()].join(',') || '-');
+  const added = url.searchParams.getAll('path').flatMap(value => value.split('/')).filter(Boolean);
+  const segments = url.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
+  if (added.length && added.join('/') === segments.join('/')) {
     url.searchParams.delete('path');
     req.url = url.pathname + url.search;
   }
