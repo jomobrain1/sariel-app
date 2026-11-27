@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
 import { AccountIcon } from '../../components/account-icon';
 import { labels, safetyApi, type Update } from './safety.api';
 import './safety-dashboard.css';
@@ -120,6 +121,7 @@ export function SafetyDashboard({accountId}:{accountId:string}) {
         </section>
         <WelfareCard/>
         <IncidentLink/>
+        <Link to="/photos" className="safety-panel safety-photos"><span className="safety-link-icon"><AccountIcon name="globe"/></span><span>Photos</span><AccountIcon name="arrow"/></Link>
       </div>
     </div>
     <section className="safety-panel safety-history"><h2>Recent safety activity</h2>
