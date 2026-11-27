@@ -5,6 +5,7 @@ import { apiStatus } from '../../lib/api-status';
 import { AccountIcon } from '../../components/account-icon';
 import { drawScene, scenes, type Scene } from './landscapes';
 import { photosApi, type CoverPhoto } from './photos.api';
+import { ReportPhotoList, ReportPhotoModal } from './report-photos';
 import './photos.css';
 
 type Tab = 'generate' | 'library' | 'upload';
@@ -23,7 +24,7 @@ function daysLeft(value: string, now: number) {
   return days <= 1 ? 'Deletes within a day' : `Deletes in ${days} days`;
 }
 
-function PhotoCard({ photo, now }: { photo: CoverPhoto; now: number }) {
+function PhotoCard({ photo, now, onReport }: { photo: CoverPhoto; now: number; onReport: (p: CoverPhoto) => void }) {
   const full = photosApi.usePhotoQuery(photo.id);
   const [remove, removing] = photosApi.useDeletePhotoMutation();
   const src = full.currentData?.data.dataUrl;
@@ -33,6 +34,7 @@ function PhotoCard({ photo, now }: { photo: CoverPhoto; now: number }) {
       <div><strong>{photo.theme ? photo.theme[0].toUpperCase() + photo.theme.slice(1) : kindLabel[photo.kind]}</strong>
         <small>{kindLabel[photo.kind]} · {photo.width}×{photo.height} · {daysLeft(photo.expiresAt, now)}</small></div>
       <div className="photo-actions">
+        <button className="photo-primary" onClick={() => onReport(photo)}>Create report photo</button>
         {src && <a className="photo-ghost" href={src} download={`photo-${photo.id.slice(0, 8)}.png`}>Download</a>}
         <button className="photo-ghost is-danger" disabled={removing.isLoading} onClick={() => void remove(photo.id)}>Delete</button>
       </div>
@@ -96,11 +98,12 @@ export function PhotosPage() {
   const [tab, setTab] = useState<Tab>('generate');
   const [error, setError] = useState('');
   const [now] = useState(() => Date.now());
+  const [reporting, setReporting] = useState<CoverPhoto | null>(null);
   if (user?.tenant) return <Navigate to="/dashboard" replace />;
   const list = photos.currentData?.data ?? [];
   return <section className="photo-page" aria-labelledby="photos-title">
-    <header className="photo-head"><h1 id="photos-title">Photos</h1>
-      <p>Ordinary photos you can later turn into report photos. They delete themselves after 7 days.</p></header>
+    <header className="photo-head"><h1 id="photos-title">Report photos</h1>
+      <p>Hide an encrypted safety report inside an ordinary photo. Prepare it now, send it when you need help.</p></header>
     <section className="photo-card-panel">
       <div className="photo-tabs" role="tablist" aria-label="Add a photo">
         {([['generate', 'Generate'], ['library', 'Library'], ['upload', 'Upload']] as const).map(([key, label]) =>
@@ -111,9 +114,12 @@ export function PhotosPage() {
     </section>
     <section className="photo-card-panel">
       <h2>Your photos</h2>
+      <p className="photo-sub">Choose <strong>Create report photo</strong> on any photo to hide a report inside it.</p>
       {photos.isError ? <p role="alert">Couldn’t load your photos.</p> : !photos.currentData ? <p role="status">Loading…</p>
-        : list.length ? <ul className="photo-grid">{list.map(p => <PhotoCard key={p.id} photo={p} now={now} />)}</ul>
+        : list.length ? <ul className="photo-grid">{list.map(p => <PhotoCard key={p.id} photo={p} now={now} onReport={setReporting} />)}</ul>
         : <div className="photo-empty"><AccountIcon name="globe" /><p>No photos yet. Generate one, pick from the library, or upload your own.</p></div>}
     </section>
+    <ReportPhotoList />
+    <ReportPhotoModal cover={reporting} onClose={() => setReporting(null)} />
   </section>;
 }

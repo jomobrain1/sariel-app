@@ -1,4 +1,4 @@
-type AccountIconName = 'user' | 'dashboard' | 'shield' | 'logout' | 'edit' | 'mail' | 'calendar' | 'lock' | 'monitor' | 'arrow' | 'globe' | 'search' | 'filter' | 'tag' | 'activity' | 'link' | 'bell'
+type AccountIconName = 'user' | 'dashboard' | 'shield' | 'logout' | 'edit' | 'mail' | 'calendar' | 'lock' | 'monitor' | 'arrow' | 'globe' | 'search' | 'filter' | 'tag' | 'activity' | 'link' | 'bell' | 'chat' | 'image'
 
 export function AccountIcon({ name }: { name: AccountIconName }) {
   const paths: Record<AccountIconName, string> = {
@@ -16,6 +16,8 @@ export function AccountIcon({ name }: { name: AccountIconName }) {
     filter: 'M3 4h18l-7 8v8l-4-2v-6Z',
     tag: 'M3 3h8l10 10-8 8L3 11ZM7 7h.01',
     activity: 'M12 3 2 21h20ZM12 9v5m0 3v.1',
+    chat: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12ZM8.5 12h.01M12 12h.01M15.5 12h.01',
+    image: 'M4 5h16v14H4zM4 15l4.5-4.5 4 4 2.5-2.5L20 17M15 9.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z',
     bell: 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
     link: 'M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1',
     globe: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18m-9-9c5 5 5 13 0 18-5-5-5-13 0-18Z',

@@ -203,6 +203,74 @@ try {
   await call('individual/assistant/conversations/'+chat.id,{method:'DELETE',token:alice.token,status:204});
   await call('individual/assistant/conversations/'+chat.id,{token:alice.token,status:404});
   console.log('Phase 5 assistant checks passed.');
+
+  // ── Report photos (M22) ───────────────────────────────────
+  const imagesNow=await call('individual/images',{token:alice.token});
+  const cover=imagesNow.find(i=>i.kind==='upload');
+  const invite=await post('individual/circle',{email:bob.email,permissions:{status:true,location:false,updates:false}},{token:alice.token,status:201});
+  await post('individual/circle/'+invite.id+'/accept',undefined,{token:bob.token,status:204});
+  await post('individual/report-photos',{coverId:cover.id,level:4,category:'labour exploitation'},{token:bob.token,status:404});
+  const photo=await post('individual/report-photos',{coverId:cover.id,level:4,category:'labour exploitation',country:'SA'},{token:alice.token,status:201});
+  assert.match(photo.link,/^\/p\/[A-Za-z0-9_-]{12}$/);assert.match(photo.dataUrl,/^data:image\/png;base64,/);
+  const photoBytes=Buffer.from(photo.dataUrl.split(',')[1],'base64');
+  const imageHistory=async()=>(await call('individual/status/history',{token:alice.token})).filter(e=>e.channel==='image');
+  const check=(image,createIncident=false,token=admin,status=200)=>post('platform/photo-check',{image:image.toString('base64'),createIncident},{token,status});
+  await check(photoBytes,false,alice.token,403);
+
+  // The hidden report is invisible: pixels differ from the cover by at most 1.
+  const coverPng=PNG.sync.read(Buffer.from((await call('individual/images/'+cover.id,{token:alice.token})).dataUrl.split(',')[1],'base64'));
+  const reportPng=PNG.sync.read(photoBytes);
+  assert.equal(reportPng.width,coverPng.width);
+  assert(reportPng.data.every((v,i)=>Math.abs(v-coverPng.data[i])<=1));
+
+  // Check only: valid, identifies the owner, creates nothing.
+  let result=await check(photoBytes);
+  assert.equal(result.valid,true);assert.equal(result.person.email,alice.email);assert.equal(result.report.level,4);assert.equal(result.incident,null);
+  assert.equal((await imageHistory()).length,0);
+  // Public submission creates the incident and alerts the circle; the sender learns nothing.
+  assert.deepEqual(await post('auth/safety/photo',{image:photo.dataUrl}),{received:true});
+  let incidents=await imageHistory();
+  assert.equal(incidents.length,1);assert.equal(incidents[0].level,4);assert.equal(incidents[0].active,true);
+  const alert=(await call('individual/notifications',{token:bob.token})).items.find(n=>n.kind==='photo-report');
+  assert.equal(alert.priority,'emergency');assert.equal(alert.title,'Alice may need help');
+  // Repeats (photo or link) add to the open incident rather than creating new ones.
+  await post('auth/safety/photo',{image:photo.dataUrl});
+  await post('auth/safety/photo-link',{token:photo.link.slice(3)},{status:204});
+  assert.equal((await imageHistory()).length,1);
+  assert.equal((await check(photoBytes)).message,'Valid report. An incident for it is already open.');
+  // Unknown links look exactly the same to the visitor.
+  await post('auth/safety/photo-link',{token:'AAAAAAAAAAAA'},{status:204});
+
+  // Damaged images are rejected.
+  const tamperedPng=PNG.sync.read(photoBytes);const flip=Math.floor(((6+60)*8)/3)*4;tamperedPng.data[flip]^=1;
+  assert.match((await check(PNG.sync.write(tamperedPng))).message,/failed verification/);
+  const cropped=new PNG({width:reportPng.width-40,height:reportPng.height});
+  for(let y=0;y<cropped.height;y++)reportPng.data.copy(cropped.data,y*cropped.width*4,(y*reportPng.width+40)*4,(y*reportPng.width+reportPng.width)*4);
+  assert.equal((await check(PNG.sync.write(cropped))).valid,false);
+  const recompressed=jpeg.encode({data:reportPng.data,width:reportPng.width,height:reportPng.height},92).data;
+  assert.match((await check(recompressed)).message,/No Sariel report was found/);
+  assert.match((await check(makePng(40,40))).message,/No Sariel report was found/);
+  await post('auth/safety/photo',{image:PNG.sync.write(tamperedPng).toString('base64')});
+  assert.equal((await imageHistory()).length,1);
+
+  // After the incident is resolved, using the same photo again starts a new incident.
+  await mongoose.connection.collection('sariel_safety_events').updateMany({owner:alice.id,channel:'image'},{$set:{active:false}});
+  await post('auth/safety/photo-link',{token:photo.link.slice(3)},{status:204});
+  incidents=await imageHistory();
+  assert.equal(incidents.length,2);assert.equal(incidents.filter(e=>e.active).length,1);
+
+  // Revoking one photo, then all photos.
+  await call('individual/report-photos/'+photo.id,{method:'DELETE',token:bob.token,status:404});
+  await call('individual/report-photos/'+photo.id,{method:'DELETE',token:alice.token,status:204});
+  assert.match((await check(photoBytes)).message,/revoked by its owner/);
+  const second=await post('individual/report-photos',{coverId:cover.id,level:2,category:'welfare'},{token:alice.token,status:201});
+  assert.equal((await check(Buffer.from(second.dataUrl.split(',')[1],'base64'))).valid,true);
+  await post('individual/report-photos/revoke-all',undefined,{token:alice.token,status:204});
+  assert.match((await check(Buffer.from(second.dataUrl.split(',')[1],'base64'))).message,/key was revoked/);
+  const listed=await call('individual/report-photos',{token:alice.token});
+  assert.equal(listed.length,2);assert(listed.every(r=>r.revoked));
+  assert.equal(listed.find(r=>r.id===photo.id).uses>=3,true);
+  console.log('Phase 5 report photo checks passed.');
 }finally{
   await new Promise(resolve=>server.close(resolve));
   fake.close();

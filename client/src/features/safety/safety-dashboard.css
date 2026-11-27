@@ -77,3 +77,4 @@
 .safety-photos > .account-icon {width:20px;height:20px}
 .safety-photos:hover {border-color:#9fb3ac}
 .safety-photos:focus-visible {outline:3px solid #25866f;outline-offset:3px}
+.safety-photos > span:nth-child(2) small {display:block;margin-top:3px;font-size:.88rem;font-weight:500;color:#5b6b66}

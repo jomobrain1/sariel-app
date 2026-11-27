@@ -7,6 +7,7 @@ import { ElementsPage } from './pages/elements.page'
 import { AboutPage } from './pages/about.page'
 import { NotFoundPage } from './pages/not-found.page'
 import { authRoutes } from './features/auth/auth.routes'
+import { SharePhotoPage } from './features/photos/share.page'
 
 export const routes: RouteObject[] = [
   ...adminRoutes,
@@ -17,6 +18,7 @@ export const routes: RouteObject[] = [
       { path: '/', element: <HomePage /> },
       { path: '/elements', element: <ElementsPage /> },
       { path: '/about', element: <AboutPage /> },
+      { path: '/share', element: <SharePhotoPage /> },
       ...authRoutes,
       { path: '*', element: <NotFoundPage /> },
     ],

@@ -172,7 +172,7 @@ export default defineRoutes(router => {
       return ctx.response.success({
         owner, name, permissions,
         // Discreet link and gallery reports never reach circle members.
-        status:permissions.status ? await currentStatus(owner, ['account', 'welfare']) : null,
+        status:permissions.status ? await currentStatus(owner, ['account', 'welfare', 'image']) : null,
         lastCheckInRequest:request ? {createdAt:request.createdAt, answeredAt:request.answeredAt} : null,
       });
     }, {validate:{params:personParams}});
