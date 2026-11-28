@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PublicReportDetail } from './report-detail';
+import { PublicReportDetail, PublicReportLoading } from './report-detail';
 import { statusLabel, urgencyLabel } from './labels';
 import { publicReportsApi, type ReportAction } from './public-reports.api';
 import './public-reports.css';
@@ -39,7 +39,8 @@ function AdminDetail({ id }: { id: string }) {
   const [working, setWorking] = useState<string>();
   const [saved, setSaved] = useState('');
   const data = report.currentData?.data;
-  if (!data) return <p role="status" className="pr-muted">Loading…</p>;
+  if (report.isError && !data) return <p role="alert" className="pr-muted">Could not load the report. <button className="pr-ghost" onClick={() => void report.refetch()}>Retry</button></p>;
+  if (!data) return <PublicReportLoading />;
   const busy = !!working || updating.isLoading;
   const text = detail.trim();
   async function act(key: string, body: { action?: ReportAction; status?: string }, done: string) {
@@ -54,7 +55,7 @@ function AdminDetail({ id }: { id: string }) {
   return <PublicReportDetail report={data} onNote={note => update({ id, note }).unwrap()} actions={<section className="pr-act">
     <h3>Actions</h3>
     {closed ? <div className="pr-actions"><button className="pr-ghost" disabled={busy} aria-busy={working === 'reopen'} onClick={() => void act('reopen', { status: 'submitted' }, 'Report reopened.')}>{label('reopen', 'Reopen')}</button></div> : <>
-      <input className="pr-act-detail" maxLength={1500} value={detail} onChange={e => setDetail(e.target.value)} placeholder="Details for the action (optional), e.g. spoke to them by phone" aria-label="Action details" />
+      <input className="pr-act-detail" maxLength={1500} value={detail} onChange={e => setDetail(e.target.value)} placeholder="Action note (optional)" aria-label="Action details" />
       <div className="pr-actions">
         {data.status === 'submitted' && <button className="pr-ghost" disabled={busy} aria-busy={working === 'review'} onClick={() => void act('review', { status: 'reviewing' }, 'Review started.')}>{label('review', 'Start review')}</button>}
         <button className="pr-ghost" disabled={busy || !data.contact} title={data.contact ? undefined : 'The reporter left no contact'} aria-busy={working === 'contacted'} onClick={() => void act('contacted', { action: 'contacted-reporter' }, 'Saved: reporter contacted.')}>{label('contacted', 'Contacted reporter')}</button>
@@ -70,7 +71,8 @@ function OrgDetail({ id }: { id: string }) {
   const report = publicReportsApi.useOrgPublicReportQuery(id);
   const [addNote] = publicReportsApi.useOrgPublicReportNoteMutation();
   const data = report.currentData?.data;
-  if (!data) return <p role="status" className="pr-muted">Loading…</p>;
+  if (report.isError && !data) return <p role="alert" className="pr-muted">Could not load the report. <button className="pr-ghost" onClick={() => void report.refetch()}>Retry</button></p>;
+  if (!data) return <PublicReportLoading />;
   return <PublicReportDetail report={data} onNote={note => addNote({ id, note }).unwrap()} />;
 }
 
