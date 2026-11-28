@@ -1,4 +1,5 @@
 import { Skeleton } from '@tilcayo/ui'
+import { lastShell } from '../lib/shell-hint'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router'
 import { useAuth } from '../app/auth'
@@ -8,7 +9,7 @@ import { AccountMenu } from './account-menu'
 
 export function Navigation() {
   const { initialized, isAuthenticated, user } = useAuth()
-  const individual = isAuthenticated && !!user && !user.tenant && user.platformRole !== 'superadmin'
+  const individual = initialized ? isAuthenticated && !!user && !user.tenant && user.platformRole !== 'superadmin' : lastShell() === 'personal'
   const [isOpen, setIsOpen] = useState(false)
   const toggleRef = useRef<HTMLButtonElement>(null)
   const close = () => setIsOpen(false)

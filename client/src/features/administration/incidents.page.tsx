@@ -1,6 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '@tilcayo/ui';
-import { AccountMenu } from '../../components/account-menu';
 import { AccountIcon } from '../../components/account-icon';
 import { labels, safetyApi } from '../safety/safety.api';
 import { configApi, type PlatformIncident } from './configuration.api';
@@ -107,7 +106,6 @@ export function PlatformIncidents(){
   return <section className="incident-register" aria-label="Incidents">
     <header className="register-head"><div><h1>Incidents</h1><p>Track and review reported incidents.</p></div>
       <label className="register-search"><AccountIcon name="search"/><input type="search" aria-label="Search incidents by account, category, organization or reference" placeholder="Search incidents…" maxLength={100} value={draft} onChange={e=>setDraft(e.target.value)}/></label>
-      <AccountMenu platform/>
     </header>
     <div className="register-metrics">{priorities.map(p=><button key={p.level} type="button" className={'priority-'+p.level} aria-pressed={level===p.level} onClick={()=>chooseLevel(level===p.level?0:p.level)}>
       <strong>{data ? data.levels[p.level]??0 : '—'}</strong><span>{p.name}</span></button>)}</div>

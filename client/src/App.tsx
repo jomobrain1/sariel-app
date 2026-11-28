@@ -1,4 +1,6 @@
-import { SessionSkeleton } from './components/session-skeleton'
+import { SessionPresentation } from './components/session-presentation'
+import { RefreshProgress } from './components/refresh-progress'
+import './components/page-loading.css'
 import { BrowserRouter, useRoutes } from 'react-router'
 import { routes } from './routes'
 import { AuthBootstrap } from './app/auth'
@@ -12,9 +14,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthBootstrap fallback={<SessionSkeleton />}>
+      <AuthBootstrap fallback={<AppRoutes />}>
         <AppRoutes />
       </AuthBootstrap>
+      <SessionPresentation />
+      <RefreshProgress />
       <Toaster />
     </BrowserRouter>
   )

@@ -46,15 +46,17 @@ export function PublicReportDetail({ report, onNote, actions }: { report: Public
   return <div className="pr-detail">
     <div className="pr-tags"><span className={'pr-pill urgency-' + report.urgency}>{urgencyLabel[report.urgency]}</span><span className={'pr-pill status-' + report.status}>{statusLabel[report.status]}</span></div>
     <p className="pr-text">{report.description}</p>
+    <div className={'pr-overview' + (report.media.length ? ' has-media' : '')}>
     <dl className="pr-facts">
       <div><dt>Country</dt><dd>{report.country}</dd></div>
       {report.place && <div><dt>Place</dt><dd>{report.place}</dd></div>}
-      <div><dt>Reporter contact</dt><dd>{report.contact ?? 'Not given'}</dd></div>
-      <div><dt>Received</dt><dd>{when(report.submittedAt)}</dd></div>
+      <div className="pr-fact-wide"><dt>Reporter contact</dt><dd>{report.contact ?? 'Not given'}</dd></div>
+      <div className="pr-fact-wide"><dt>Received</dt><dd>{when(report.submittedAt)}</dd></div>
     </dl>
     {!!report.media.length && <div className="pr-media">{report.media.map((m, i) => m.url
       ? <MediaItem key={i} media={m as Media & { url: string }} index={i} reference={report.id} />
       : <div key={i} className="pr-media-off">{m.kind === 'video' ? 'Video' : 'Photo'} unavailable</div>)}</div>}
+    </div>
     {actions}
     <div className="pr-notes">
       <h3>Timeline &amp; notes</h3>

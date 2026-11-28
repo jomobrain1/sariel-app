@@ -26,7 +26,7 @@ function List({ scope }: { scope: 'admin' | 'org' }) {
             <small>{statusLabel[r.status]} · {when(r.submittedAt)}{r.media.length ? ` · ${r.media.length} file(s)` : ''}</small></span></button></li>)}</ul>
         : <p className="pr-muted">No reports here.</p>}
     </section>
-    <section className="pr-pane">{selected ? scope === 'admin' ? <AdminDetail id={selected} /> : <OrgDetail id={selected} /> : <p className="pr-muted">Choose a report.</p>}</section>
+    <section className="pr-pane">{selected ? scope === 'admin' ? <AdminDetail key={selected} id={selected} /> : <OrgDetail key={selected} id={selected} /> : <p className="pr-muted">Choose a report.</p>}</section>
   </div>;
 }
 

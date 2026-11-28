@@ -82,3 +82,12 @@
 .ai-backup input {grid-area:model}
 .ai-backup .ai-ghost[aria-label="Move up"] {grid-area:up}
 .ai-backup .ai-ghost[aria-label="Remove backup"] {grid-area:remove}
+
+.ai-card{display:flex;flex-direction:column;gap:16px;min-width:0}.ai-card h3{min-height:2.4em;display:flex;align-items:flex-start}
+.ai-fields :is(input,select){width:100%;min-width:0;box-sizing:border-box}
+.ai-backups{gap:12px;padding-top:16px}.ai-backup{padding:12px;border:1px solid #e3e9e6;border-radius:8px;background:#f8faf9;grid-template-columns:24px minmax(0,1fr) 32px 32px;grid-template-areas:"n provider provider provider" ". model model model" ". . up remove";gap:8px}
+.ai-backup select,.ai-backup input{width:100%;box-sizing:border-box;min-height:38px;border-radius:6px}
+.ai-backup .ai-ghost{width:32px;padding:0;min-height:32px}.ai-backup-n{align-self:center}
+.ai-add-backup{margin-top:2px}.ai-test{margin-top:auto;padding-top:16px;border-top:1px solid #edf1ef}
+.ai-key-head{margin-bottom:12px}.ai-panel header{gap:16px}
+@media(max-width:900px){.ai-card h3{min-height:0}.ai-backup{grid-template-columns:24px minmax(0,1fr) 32px 32px;grid-template-areas:"n provider up remove" ". model model model"}}

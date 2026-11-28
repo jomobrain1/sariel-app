@@ -1,10 +1,10 @@
-import { PageSkeleton } from '@tilcayo/ui';
+import { PageLoading } from '../../components/page-loading';
 import type { ReactNode } from 'react';
 import { useGetWorkspaceQuery } from './tenancy.api';
 
 export function WorkspaceGate({ children }: { children: ReactNode }) {
   const { isLoading, isError, error, refetch } = useGetWorkspaceQuery();
-  if (isLoading) return <PageSkeleton variant="content" label="Loading workspace" />;
+  if (isLoading) return <PageLoading />;
   if (isError) return <main className="workspace-unavailable"><span className="workspace-eyebrow">Sariel workspace</span><h1>Workspace unavailable</h1><p>{error && 'message' in error ? String(error.message) : 'Unable to load this workspace.'}</p><button className="tl-btn tl-btn-primary" onClick={() => void refetch()}>Try again</button></main>;
   return children;
 }

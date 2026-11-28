@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AccountMenu } from '../../components/account-menu';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { AccountIcon } from '../../components/account-icon';
@@ -8,7 +8,6 @@ import './platform.css';
 const primary = [
   ['Organizations', 'workspaces', 'globe'],
   ['Incidents', 'incidents', 'activity'],
-  ['Public reports', 'public-reports', 'activity'],
   ['Photo check', 'photo-check', 'image'],
   ['Users', 'users', 'user'],
 ] as const;
@@ -16,9 +15,9 @@ const settings = [
   ['Platform', 'platform-settings'], ['AI providers', 'ai-settings'], ['Audit log', 'audit'], ['Trash', 'recovery'], ['My profile', 'profile'],
 ] as const;
 
-export function PlatformLayout() {
+export function PlatformLayout({ pending = false, children }: { pending?: boolean; children?: ReactNode }) {
   const path = useLocation().pathname.replace(/\/$/,'');
-  const incidents = path === '/admin/incidents';
+  const incidents = path === '/admin/incidents' || path === '/admin/public-reports';
   const inSettings = settings.some(([,slug])=>path==='/admin/'+slug);
   const [collapsed,setCollapsed] = useState(()=>{
     try { return localStorage.getItem('sariel.sidebar.collapsed') === 'true'; } catch { return false; }
@@ -37,15 +36,16 @@ export function PlatformLayout() {
         {!collapsed && <span>Platform administration</span>}
       </header>
       <nav id="platform-navigation" aria-label="Platform administration">{primary.map(([label,slug,icon])=>
-        <NavLink key={slug} title={label} aria-label={label} to={'/admin/'+slug}><AccountIcon name={icon}/>{!collapsed && <span>{label}</span>}</NavLink>)}
+        <NavLink key={slug} className={slug === 'incidents' && incidents ? 'active' : undefined} title={label} aria-label={label} to={'/admin/'+slug}><AccountIcon name={icon}/>{!collapsed && <span>{label}</span>}</NavLink>)}
         <Link to="/admin/platform-settings" className={inSettings?'active':undefined} title="Settings" aria-label="Settings"><AccountIcon name="edit"/>{!collapsed && <span>Settings</span>}</Link>
       </nav>
     </aside>
-    <main className="sariel-content">{!incidents && <header className="platform-account-bar">
+    <main className="sariel-content"><header className="platform-account-bar">
+      {incidents && <nav className="platform-settings-tabs" aria-label="Report sections"><NavLink to="/admin/incidents">Incidents</NavLink><NavLink to="/admin/public-reports">Public reports</NavLink></nav>}
       {inSettings && <nav className="platform-settings-tabs" aria-label="Settings sections">{settings.map(([label,slug])=>
         <NavLink key={slug} to={'/admin/'+slug}>{label}</NavLink>)}</nav>}
-      <AccountMenu platform /></header>}
-      <WorkspaceGate><Outlet/></WorkspaceGate>
+      {pending ? <span className="shell-avatar skeleton-block" aria-label="Checking session" /> : <AccountMenu platform />}</header>
+      {pending ? children : <WorkspaceGate><Outlet/></WorkspaceGate>}
     </main>
   </div>;
 }

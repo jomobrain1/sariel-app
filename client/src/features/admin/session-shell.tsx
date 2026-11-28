@@ -1,9 +1,12 @@
 import { AdminLayout } from '@tilcayo/admin';
-
-// While the session loads, show only Sariel's name and a neutral menu, never the framework's defaults.
-const placeholder = { id: '', name: '', email: '', adminTabs: ['overview'] };
-
-/** Navigation is presentation only; protected routes and queries stay unmounted. */
+import { PlatformLayout } from '../administration/platform-layout';
+import { useGetWorkspaceQuery } from '../tenancy/tenancy.api';
+import { lastShell } from '../../lib/shell-hint';
+import { PageLoading } from '../../components/page-loading';
+/** Presentation only; protected routes remain unmounted until verification. */
 export function AdminSessionShell() {
-  return <AdminLayout pending title="Sariel" user={placeholder} />;
+  const workspace=useGetWorkspaceQuery();
+  const organization=!!workspace.data?.data.tenant||lastShell()==='workspace';
+  if(organization)return <AdminLayout title="Sariel" user={{name:'',email:'',adminTabs:['overview']}}><PageLoading/></AdminLayout>;
+  return <PlatformLayout pending><PageLoading/></PlatformLayout>;
 }

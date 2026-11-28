@@ -1,13 +1,8 @@
-import { useGetWorkspaceQuery } from '../features/tenancy/tenancy.api';
 import { AdminSessionShell } from '../features/admin/session-shell';
-import { useLocation } from 'react-router'
-import { PageSkeleton } from '@tilcayo/ui'
-import { SiteHeader } from './site-header'
-
+import { useLocation } from 'react-router';
+import { PageLoading } from './page-loading';
 export function SessionSkeleton() {
-  useGetWorkspaceQuery();
-  const { pathname } = useLocation()
-  if (/^\/admin(?:\/|$)/.test(pathname)) return <AdminSessionShell />
-  if (/^\/(login|register|forgot-password)(?:\/|$)/.test(pathname)) return <PageSkeleton variant="auth" label="Checking your session" />
-  return <div className="starter-site"><SiteHeader /><main className="tl-container starter-main"><PageSkeleton variant="content" label="Checking your session" /></main></div>
+  const {pathname}=useLocation();
+  if(/^\/admin(?:\/|$)/.test(pathname))return <AdminSessionShell/>;
+  return <PageLoading/>;
 }

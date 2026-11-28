@@ -39,3 +39,5 @@
 .platform-settings-tabs a {padding:8px 12px;border-radius:6px;color:#425c50;text-decoration:none;font-size:.9rem;font-weight:600}
 .platform-settings-tabs a.active {background:white;color:#134e37;box-shadow:0 1px 4px #183a2926}
 @media(max-width:760px){.rail-collapsed .sariel-rail{flex-direction:row;align-items:center}.rail-collapsed .rail-head{display:flex;gap:8px}.platform-account-bar{align-items:flex-start;gap:6px}.platform-settings-tabs a{padding:7px 9px}.platform-settings-tabs{min-width:0}}
+
+.platform-account-bar{min-height:48px;gap:16px;margin-bottom:28px;flex-wrap:wrap}.platform-account-bar>.starter-account{margin-left:auto}.platform-account-bar .platform-settings-tabs{max-width:100%}.sariel-content{box-sizing:border-box}

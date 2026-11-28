@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { useAuth } from '../app/auth'
 import { AccountIcon } from '../components/account-icon'
 import './home.css'
+import { MobileAppPreview } from '../components/mobile-app-preview'
 
 const features = [
   { icon: 'shield', title: 'Report in seconds', text: 'Tell responders what’s happening with one tap, a private link, or a photo that hides your report.' },
@@ -16,8 +17,12 @@ const steps = [
   { title: 'Get help when it matters', text: 'Report from anywhere. Your circle and verified responders are alerted.' },
 ]
 
+// Set this public build-time URL when the Android release APK is published.
+const configuredApk = import.meta.env.VITE_ANDROID_APK_URL?.trim() ?? ''
+const androidApkUrl = /^(https:\/\/|\/(?!\/))/.test(configuredApk) ? configuredApk : ''
+
 export function HomePage() {
-  const { isAuthenticated, user } = useAuth()
+  const { initialized, isAuthenticated, user } = useAuth()
   const staff = !!user?.tenant || user?.platformRole === 'superadmin'
   return <div className="home">
     <section className="home-hero" aria-labelledby="home-title">
@@ -25,7 +30,7 @@ export function HomePage() {
       <h1 id="home-title">Help that reaches you, wherever you are.</h1>
       <p className="home-lead">Sariel connects you with the people you trust and verified responders, discreetly and on your terms.</p>
       <div className="home-actions">
-        {isAuthenticated
+        {!initialized ? <span className="home-primary skeleton-block" style={{ width: 220 }} role="status" aria-label="Checking session" /> : isAuthenticated
           ? <Link className="home-primary" to={staff && !user?.tenant ? '/admin/workspaces' : '/dashboard'}>Open your dashboard <AccountIcon name="arrow" /></Link>
           : <><Link className="home-primary" to="/register">Create a free account <AccountIcon name="arrow" /></Link>
             <Link className="home-secondary" to="/login">Log in</Link></>}
@@ -39,6 +44,14 @@ export function HomePage() {
         <h2>{f.title}</h2>
         <p>{f.text}</p>
       </article>)}
+    </section>
+
+    <section className="home-mobile" aria-labelledby="mobile-app-title">
+      <div className="home-mobile-copy"><p className="home-eyebrow">SARIEL FOR ANDROID</p><h2 id="mobile-app-title">Your circle.<br/> Always close.</h2>
+        <p>Report, check in and stay connected to the people you trust, from your phone.</p>
+        {androidApkUrl ? <a className="home-primary" href={androidApkUrl} download>Download for Android <AccountIcon name="arrow" /></a>
+          : <span className="home-app-coming"><AccountIcon name="arrow"/> Android download coming soon</span>}
+      </div><MobileAppPreview/>
     </section>
 
     <section className="home-steps" aria-labelledby="steps-title">

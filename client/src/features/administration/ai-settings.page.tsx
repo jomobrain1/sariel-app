@@ -2,10 +2,10 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { aiApi, type AiSettings, type Capability, type Choice } from './ai.api';
 import './ai-settings.css';
 
-const capabilities: { key: Capability; title: string; about: string }[] = [
-  { key: 'chat', title: 'Assistant and legal answers', about: 'Conversations, tool use and cited legal answers.' },
-  { key: 'embeddings', title: 'Legal search', about: 'Turns legal passages into vectors for search by meaning. Changing it requires re-indexing documents.' },
-  { key: 'images', title: 'Image generation', about: 'Creates ordinary cover photos from fixed themes. No safety details are ever sent.' },
+const capabilities: { key: Capability; title: string }[] = [
+  { key: 'chat', title: 'Assistant and legal answers' },
+  { key: 'embeddings', title: 'Legal search' },
+  { key: 'images', title: 'Image generation' },
 ];
 const number = new Intl.NumberFormat();
 
@@ -24,7 +24,6 @@ function KeyRow({ provider, data }: { provider: AiSettings['providers'][number];
   return <li className="ai-key">
     <div className="ai-key-head"><strong>{provider.label}</strong>
       <span className={'ai-pill' + (key.configured ? ' is-on' : '')}>{key.configured ? `${key.list.length + (key.env ? 1 : 0)} key${key.list.length + (key.env ? 1 : 0) === 1 ? '' : 's'}` : 'No key'}</span></div>
-    <small>Offers: {provider.capabilities.join(', ')}. If the default key fails (quota, invalid, busy), the next key is tried automatically.</small>
     {(!!key.list.length || key.env) && <ul className="ai-keylist">
       {key.list.map(k => <li key={k.id}>
         <span><strong>{k.label}</strong> <code>{k.hint}</code>{k.default && <em className="ai-pill is-on">Default</em>}</span>
@@ -48,7 +47,6 @@ function Backups({ data, value, onChange }: { data: AiSettings; value: Choice[];
   const move = (from: number, to: number) => { const next = [...value]; next.splice(to, 0, ...next.splice(from, 1)); onChange(next); };
   return <div className="ai-backups">
     <strong>Backup providers</strong>
-    <small>Tried in order if the main provider fails. Each needs a saved key.</small>
     {value.map((choice, index) => <div key={index} className="ai-backup">
       <span className="ai-backup-n">{index + 1}</span>
       <select aria-label={`Backup ${index + 1} provider`} value={choice.provider} onChange={e => onChange(value.map((c, i) => i === index ? { provider: e.target.value, model: options.find(p => p.id === e.target.value)?.models.chat?.[0] ?? '' } : c))}>
@@ -57,7 +55,7 @@ function Backups({ data, value, onChange }: { data: AiSettings; value: Choice[];
       <button type="button" className="ai-ghost" aria-label="Move up" disabled={index === 0} onClick={() => move(index, index - 1)}>↑</button>
       <button type="button" className="ai-ghost is-danger" aria-label="Remove backup" onClick={() => onChange(value.filter((_, i) => i !== index))}>×</button>
     </div>)}
-    {value.length < data.limits.fallbacks && <button type="button" className="ai-ghost" onClick={() => {
+    {value.length < data.limits.fallbacks && <button type="button" className="ai-ghost ai-add-backup" onClick={() => {
       const pick = options.find(p => p.id !== value.at(-1)?.provider) ?? options[0];
       onChange([...value, { provider: pick.id, model: pick.models.chat?.[0] ?? '' }]);
     }}>＋ Add backup</button>}
@@ -72,7 +70,6 @@ function CapabilityCard({ capability, choice, data, onChange, children }: { capa
   const listId = 'models-' + capability.key;
   return <section className="ai-card">
     <h3>{capability.title}</h3>
-    <p>{capability.about}</p>
     <div className="ai-fields">
       <label>Provider<select value={choice.provider} onChange={e => onChange({ provider: e.target.value, model: data.providers.find(p => p.id === e.target.value)?.models[capability.key]?.[0] ?? '' })}>
         {options.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
@@ -122,7 +119,7 @@ export function AiSettingsPage() {
   }
   return <section className="ai-admin" aria-labelledby="ai-title">
     <header className="ai-head"><h1 id="ai-title">AI providers</h1><p>Choose which provider powers each feature. Changes apply immediately.</p></header>
-    <section className="ai-panel"><header><div><h2>API keys</h2><p>Save several keys per provider. The default is used first; if it fails, the others are tried in order. Each provider bills the account that owns its key.</p></div></header>
+    <section className="ai-panel"><header><div><h2>API keys</h2></div></header>
       <ul className="ai-keys">{data.providers.map(p => <KeyRow key={p.id} provider={p} data={data} />)}</ul></section>
     <form className="ai-panel" onSubmit={submit}>
       <header><div><h2>Features</h2><p>Save changes, then use Test to confirm each one works.</p></div></header>
